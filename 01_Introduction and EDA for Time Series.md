@@ -257,3 +257,137 @@ A cheat sheet for Data Scientists to manage these characteristics.
 * ✅ **Teknik Ekleme:** İstatistiksel test şarttır. En meşhuru **Augmented Dickey-Fuller (ADF)** testidir.
     * Eğer **p-value < 0.05** ise durağandır deriz.
     * Değilse, **Differencing** ($y_t - y_{t-1}$) işlemi uygulanır.
+---
+
+
+# 🧩 Components of a Time Series (Zaman Serisi Bileşenleri)
+
+ <img width="722" height="281" alt="image" src="https://github.com/user-attachments/assets/efe54c65-be23-4bb8-98ae-85d9b17dd2a5" />
+
+Time-series data are built from three primary ingredients—**trend**, **seasonality**, and **noise**—layered on top of one another like tracks in a music mix.
+
+In a composite plot, you’ll see all three playing at once:
+1.  A line that generally climbs upward (**Trend**).
+2.  Rises and falls in a smooth yearly rhythm (**Seasonality**).
+3.  Jiggles unpredictably from point to point (**Noise**).
+
+By zooming in on each component separately, we can explain where the shape of the full series comes from, choose the right modelling tools for each layer, and make cleaner forecasts than if we treated the whole tangle as a single line.
+
+---
+## 1. Trend (Eğilim)
+
+<img width="699" height="252" alt="image" src="https://github.com/user-attachments/assets/d7af0bdd-5522-467c-9a1f-1a039e13cfc9" />
+
+**Definition:** This represents the long-term direction or tendency of the data. It captures the overall upward or downward movement over time. Trends can be linear (constant increase or decrease) or nonlinear (curved or oscillating).
+
+* **Visual:** In a “Trend Component” chart, notice the steady climb—no dips, no cycles.
+
+> **💡 Uzman Notu (Technical Insight):**
+> Trendi izole etmek için genellikle **Hareketli Ortalamalar (Moving Averages)** veya **LOESS (Locally Estimated Scatterplot Smoothing)** yöntemleri kullanılır. Trendi veriden çıkardığımızda (Detrending), geriye daha durağan (stationary) bir yapı kalır ki bu da modelleme için idealdir.
+
+---
+
+## 2. Seasonality (Mevsimsellik)
+
+ <img width="668" height="245" alt="image" src="https://github.com/user-attachments/assets/3804b04f-f2f7-4923-b81a-5d5a4fdc921a" />
+
+**Definition:** Refers to patterns that repeat at **fixed intervals** within a time series. These patterns can be daily, weekly, monthly, or yearly. External factors such as weather conditions, holidays, or economic cycles often have an impact on seasonality.
+
+* **Visual:** A “Seasonality Component” shows a crisp repeating wave (e.g., a 12-month sine wave)—exactly the kind of yearly rhythm utilities see when summers get hot and winters cold.
+
+> **⚠️ Kritik Ayrım (Expert Warning):**
+> Metinde "ekonomik döngüler" mevsimsellik içinde geçse de, ileri seviye analizde **Cycle (Döngü)** ve **Seasonality (Mevsimsellik)** farklıdır.
+> * **Seasonality:** Frekansı sabittir (Örn: Her Pazartesi).
+> * **Cycle:** Frekansı değişkendir (Örn: Ekonomik krizler 5 yılda bir de olabilir, 10 yılda bir de). Döngüler genellikle Trend bileşeni içinde analiz edilir.
+
+---
+
+## 3. Noise / Residuals (Gürültü / Artıklar)
+ 
+ <img width="730" height="272" alt="image" src="https://github.com/user-attachments/assets/08c4a1f2-60d9-4ba9-8aaf-dba14d91efe1" />
+
+ **Definition:** Represents the unpredictable and random variations in the data and includes factors that cannot be explained by trend or seasonality. Measurement errors, random events, or unidentified factors can contribute to the presence of noise in the data.
+
+* **Visual:** The “Noise Component” plot looks like pure scatter around zero; no clear trend or cycle.
+
+> **💡 Uzman Notu (Technical Insight):**
+> İdeal bir modelde Gürültü (Residuals) **"White Noise" (Beyaz Gürültü)** olmalıdır. Yani:
+> 1.  Ortalaması sıfır olmalı.
+> 2.  Varyansı sabit olmalı.
+> 3.  Otokorelasyonu olmamalı (Rastgele olmalı).
+> Eğer Gürültü kısmında hala bir desen (pattern) görüyorsanız, modeliniz verideki bilgiyi tam sömürememiş demektir (**Underfitting**).
+
+---
+
+## 4. Putting it Together (Birleştirme)
+
+The first chart (“Full Series”) overlays all three ingredients:
+* **Trend** lifts the whole series over time.
+* **Seasonality** adds the rolling hills.
+* **Noise** rattles each point up or down at random.
+
+**Business Application:**
+When we model a real business series—say, monthly revenue—we pull it apart the same way:
+1.  Estimate the trend (growth).
+2.  Capture repeating cycles (holidays, weekends).
+3.  Treat what’s left as noise or anomalies.
+
+Do that well, and forecasts become clearer, anomalies stand out sooner, and decisions (inventory, staffing, budget) get a firmer footing.
+
+---
+
+## 📊 Technical Comparison: Decomposition Models
+
+Veri bilimciler olarak seriyi ayrıştırırken matematiksel yapısına göre şu iki modelden birini seçeriz:
+
+| Özellik | Additive Decomposition (Toplamsal) | Multiplicative Decomposition (Çarpımsal) |
+| :--- | :--- | :--- |
+| **Matematiksel Formül** | $$y(t) = Trend + Seasonality + Noise$$|$$y(t) = Trend \times Seasonality \times Noise$$ |
+| **Görsel İpucu** | Mevsimsel dalgalanmaların boyutu (genliği) zamanla **sabit** kalır. | Trend arttıkça (veya azaldıkça) mevsimsel dalgalanmalar da **büyür/küçülür**. |
+| **Kullanım Alanı** | Sıcaklık değişimleri (Yazın hep +10 derece artar). | Satış verileri, Hisse senetleri (Satışlar 2 katına çıkarsa, yılbaşı yoğunluğu da 2 katına çıkar). |
+| **Python Kodu** | `seasonal_decompose(model='additive')` | `seasonal_decompose(model='multiplicative')` |
+
+# 🧩 Zaman Serisi Ayrıştırma (Time Series Decomposition)
+
+Zaman Serisi Ayrıştırma (Time Series Decomposition), bir veri bilimcinin elindeki en güçlü analitik araçlardan biridir. 
+
+> "Neden satışlar düştü?" sorusuna cevap verirken **"Genel bir düşüş mü var (Trend), yoksa sadece yaz bittiği için mi düştü (Mevsimsellik)?"** ayrımını yapmamızı sağlar.
+
+---
+
+## 🧠 Data Science Uzman Analizi ve Teknik Eklemeler
+
+Bir Data Science Uzmanı olarak, metindeki kavramları derinleştirelim ve eksik teknik parçaları (Additive vs. Multiplicative modeller ve Decomposition algoritmaları) tamamlayalım.
+
+Metin "Trend, Mevsimsellik ve Gürültü"yü anlatıyor ama bunların nasıl bir araya geldiğini (**Matematiksel Model**) ve nasıl ayrıştırıldığını (**Algoritma**) eksik bırakmış.
+
+### 1. Toplamsal ve Çarpımsal Modeller (Additive vs. Multiplicative)
+
+Zaman serisi bileşenleri iki ana şekilde birleşir:
+
+#### ➕ Additive (Toplamsal) Model
+$$Y(t) = Trend + Seasonality + Noise$$
+
+* **Ne zaman kullanılır?** Mevsimsel dalgalanmaların boyutu zamanla değişmiyorsa (örneğin, her Aralık ayında satışlar hep 1000 birim artıyorsa).
+
+#### ✖️ Multiplicative (Çarpımsal) Model
+$$Y(t) = Trend \times Seasonality \times Noise$$
+
+* **Ne zaman kullanılır?** Trend arttıkça mevsimsel dalgalanmalar da büyüyorsa (örneğin, şirket büyüdükçe Aralık ayı satış farkı 1000'den 10.000'e çıkıyorsa). Bu çok daha yaygındır.
+
+### 2. Döngü (Cycle) vs. Mevsimsellik (Seasonality) Ayrımı
+
+Metin "ekonomik döngüleri" mevsimsellik altında saymış. Bu teknik olarak yanlıştır.
+
+* **Mevsimsellik (Seasonality):** Sabit frekanslıdır (Her 12 ayda bir, her 7 günde bir).
+* **Döngü (Cycle):** Sabit olmayan dalgalanmalardır (Ekonomik krizler, Boğa/Ayı piyasaları). Genellikle Trend içinde saklanır veya ayrı bir "Cyclic" bileşen olarak ele alınır (Trend-Cycle).
+
+### 3. Ayrıştırma Yöntemleri (Decomposition Algorithms)
+
+Veriyi bu parçalara ayırmak için şu yöntemleri kullanırız:
+
+* **Classical Decomposition:** Basit hareketli ortalamalar kullanır.
+* **STL (Seasonal-Trend decomposition using LOESS):** En modern ve sağlam yöntemdir. Gürültüye karşı dayanıklıdır.
+* **SEATS / X-11:** Özellikle resmi devlet istatistiklerinde kullanılır.
+
+  
