@@ -430,7 +430,89 @@ Bu parçaları (Trend, Mevsimsellik, Gürültü) anlamak size şu stratejik avan
 
 > **Kısacası:** Bu temellerin arkasındaki "neden", sadece sayı tüküren bir model ile **güven kazanan, maliyetli hataları önleyen ve daha iyi kararlar alınmasını sağlayan** bir model arasındaki farktır.
 
-Gelecek dersler bu temel üzerine inşa edilecek; böylece öğrendiğiniz algoritmalar birer **"kara kutu" (black boxes)** olmaktan çıkıp, gerçek dünya davranışlarını inceleyen **iyi ayarlanmış mercekler** haline gelecektir.
+
+
+
+# 📝 Time Series Analysis: Quiz & Interview Questions (Technical Breakdown)
+
+Bu dosya, Zaman Serisi (Time Series) analizinin temel kavramlarını, mülakatlarda veya sınavlarda çıkabilecek sorular üzerinden teknik olarak açıklar.
+
+---
+
+## ❓ 1. What is a key feature of time-series data that distinguishes it from other types of data?
+
+> **✅ Cevap: Temporal Dependence / Chronological Order (Zaman Bağımlılığı / Kronolojik Sıra)**
+
+### 💡 Teknik Açıklama (Technical Explanation)
+Standart "Tabular Data" (Tablo verileri) veya kesitsel verilerde (Cross-sectional data), satırların sırası önemsizdir. Veriler genellikle **I.I.D.** (Independent and Identically Distributed) varsayımıyla ele alınır.
+
+Ancak Zaman Serilerinde en ayırt edici özellik **Zaman Sırasıdır (Temporal Order)**.
+* **Bağımlılık (Dependency):** $t$ anındaki bir gözlem ($y_t$), genellikle $t-1$ anındaki gözleme ($y_{t-1}$) matematiksel olarak bağlıdır. Buna **Otokorelasyon (Autocorrelation)** denir.
+* **Sıra (Sequence):** Veriyi karıştıramazsınız (Shuffling is forbidden). Eğer karıştırırsanız, verinin içindeki "zaman bilgisini" ve "trend" yapısını yok edersiniz.
+
+---
+
+## ❓ 2. Which of the following is NOT a characteristic of time-series data?
+
+> **✅ Cevap: Independent Observations (Bağımsız Gözlemler)**
+
+### 💡 Teknik Açıklama (Technical Explanation)
+Zaman serisi analizinin doğasına aykırı olan tek şey **Bağımsızlık (Independence)** kavramıdır.
+
+| Karakteristik | Zaman Serisinde Var mı? | Açıklama |
+| :--- | :---: | :--- |
+| **Trend** | ✅ Evet | Verinin uzun vadeli yönelimi (Artış/Azalış). |
+| **Seasonality** | ✅ Evet | Belirli periyotlarda tekrarlayan desenler. |
+| **Noise / Irregularity** | ✅ Evet | Açıklanamayan rastgele dalgalanmalar (Stochastic component). |
+| **Independence** | ❌ **HAYIR** | Zaman serisi verileri **birbirine bağımlıdır (Dependent)**. Bir gün önceki satış, bugünkü satışı etkiler. |
+
+---
+
+## ❓ 3. What does seasonality in time-series data represent?
+
+> **✅ Cevap: Repeating patterns at fixed intervals (Sabit aralıklarla tekrarlayan desenler)**
+
+### 💡 Teknik Açıklama (Technical Explanation)
+Mevsimsellik (**Seasonality**), verinin bilinen ve sabit bir frekansta (frequency) kendini tekrar etmesidir.
+
+* **Anahtar Kelime:** "Fixed Interval" (Sabit Aralık).
+* **Örnek:** Dondurma satışlarının her yıl Haziran'da artıp, Ocak'ta düşmesi.
+* **Teknik Ayrım:** Mevsimsellik, **Döngüsellikten (Cyclicity)** farklıdır.
+    * *Seasonality:* Takvime bağlıdır, süresi bellidir (Örn: 12 ay).
+    * *Cyclicity:* Ekonomik krizler gibi süresi belli olmayan, düzensiz dalgalanmalardır.
+
+---
+
+## ❓ 4. Which time-series task involves predicting future values based on past data?
+
+> **✅ Cevap: Forecasting (Tahminleme)**
+
+### 💡 Teknik Açıklama (Technical Explanation)
+Bu süreç literatürde **Forecasting** olarak geçer. Matematiksel olarak, geçmiş verilerin ($y_{t-1}, y_{t-2}...$) ve bazen dış faktörlerin ($X_t$) bir fonksiyonu olarak gelecekteki $y_{t+h}$ değerini bulmaktır.
+
+Diğer görevlerle karıştırılmamalıdır:
+* **Forecasting:** Geleceği tahmin etmek ($t+1$ nedir?).
+* **Anomaly Detection:** Geçmişteki veya şimdiki verideki gariplikleri bulmak (Bu değer normal mi?).
+* **Classification:** Seriyi bir kategoriye atamak (Bu EKG sinyali "Hasta" mı "Sağlıklı" mı?).
+
+---
+
+## ❓ 5. Which of these is an example of a trend in time-series data?
+
+> **✅ Cevap: A long-term increase or decrease in the data (Verideki uzun vadeli artış veya azalış)**
+
+### 💡 Teknik Açıklama (Technical Explanation)
+Trend, verinin **uzun vadeli (long-term)** hareketidir. Kısa vadeli dalgalanmalardan (Noise) veya mevsimsel hareketlerden (Seasonality) arındırıldığında geriye kalan ana yöndür.
+
+* **Örnek:** Küresel sıcaklıkların son 50 yıldaki ortalama artışı.
+* **Matematiksel Temsil:** Genellikle $T_t$ ile gösterilir.
+    * Lineer Trend: $y = mx + c$
+    * Eksponansiyel Trend: $y = e^{ax}$
+
+> **Ayrım:**
+> * Bir aylık satışın patlaması (Spike) -> **Noise** veya **Anomaly** olabilir.
+> * Her Aralık ayında artış -> **Seasonality**.
+> * Son 5 yıldır satışların sürekli artması -> **Trend**.
 
 
 
