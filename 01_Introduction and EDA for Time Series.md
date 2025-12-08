@@ -132,3 +132,128 @@ Bir veri bilimci olarak, hangi göreve hangi silahla (algoritma) saldıracağım
 * **Zaman Serisi** sadece sayıların listesi değildir; **sıra (order)** ve **zaman (time)** bilgisi kritik öneme sahiptir.
 * **Trend ve Mevsimsellik**, analizlerin belkemiğidir.
 * İş dünyasında sadece "geleceği bilmek" (Forecast) değil, "ters gideni bulmak" (Anomaly) ve "dönemi anlamak" (Classification) da hayati öneme sahiptir.
+  
+---
+
+
+# 🔑 Key Characteristics of Time-Series Data (Zaman Serisi Verilerinin Temel Karakteristikleri)
+
+Time-series data is not just a list of numbers; it is a sequence where history matters. Unlike standard tabular data, time series has unique behaviors that require specific modeling strategies.
+
+Let's explore three features that make time-series data special:
+1.  **Temporal Order** (Zaman Sırası) – Why the sequence itself carries meaning.
+2.  **Autocorrelation** (Otokorelasyon) – How today often echoes yesterday.
+3.  **Stationarity** (Durağanlık) – How baselines drift as the world changes.
+
+We will need to keep these three ideas in mind as they will guide every practical step of a time-series project.
+
+* "Data Leakage" (Veri Sızıntısı) ve "Stationarity" (Durağanlık) kavramları, bir modelin üretim ortamında (production) çakılmaması için hayati önem taşır.
+
+## 1. Temporal Order (Zaman Sırası)
+
+<img width="721" height="434" alt="image" src="https://github.com/user-attachments/assets/dff6ebae-aac0-43fe-8803-84e27bd2f16e" />
+
+Unlike tabular data where rows can be shuffled (e.g., predicting house prices based on size), time-series data has a rigid **temporal order** where each observation depends on previous time points.
+
+### 🚨 The "Data Leakage" Trap (Temporal-Order Example)
+**Scenario:** You’re asked to predict tomorrow’s online-shop revenue so you can set ad spend today. You have two years of daily data (date, revenue, marketing-budget, weather, etc.).
+
+**The Mistake:** A teammate—used to tabular problems—randomly shuffles the rows, keeps 80% for training and 20% for testing, and hands the split to you.
+
+**What goes wrong?**
+> If you shuffle, your model might train on data from "next week" to predict "today." This is called **Look-Ahead Bias**. The model learns the future, achieving falsely high accuracy in testing, but fails in the real world because it can't see the future in production.
+
+### ✅ Take-away & Best Practices
+* **Keep the order:** Never shuffle time-series data before splitting.
+* **Split Correctly:** Use a "train-past / test-future" split.
+* **Validation:** Instead of random K-Fold, use **Rolling-Window** or **Expanding-Window (TimeSeriesSplit)** validation.
+
+**Why this matters:**
+Temporal order tells us to use models that respect sequence (e.g., Moving Averages, ARIMA, RNNs/LSTMs) instead of ordinary regression. It keeps the future out of the past.
+
+---
+
+
+## 2. Autocorrelation (Otokorelasyon)
+
+<img width="741" height="510" alt="image" src="https://github.com/user-attachments/assets/6e0e00e9-dab3-46e1-a0b3-5c32c47c22d1" />
+
+Observations are often correlated with past data points, which makes time-series data different from **i.i.d.** (independent and identically distributed) data seen in traditional regression tasks.
+
+* **Concept:** "Today echoes yesterday."
+* **Example:** If you sell a lot of ice cream today (high value), it is likely you will sell a lot tomorrow (high value) if the weather remains similar. This "stickiness" is autocorrelation.
+
+### 🛠 Technical Insight: How to Measure?
+In Data Science, we don't just guess autocorrelation; we measure it using:
+1.  **ACF (Autocorrelation Function):** Shows correlation of the series with itself at different lags (today vs. yesterday, today vs. last week).
+2.  **PACF (Partial Autocorrelation Function):** Shows the direct correlation after removing the effects of intermediate lags.
+
+**Why this matters:**
+Counting autocorrelated data without adjusting for it is like polling the same person every hour. Your "sample size" looks big, but the information hasn't grown. Models like **ARIMA** specifically use this feature (The 'AR' part stands for AutoRegressive).
+
+---
+
+## 3. Stationarity (Durağanlık)
+
+<img width="701" height="598" alt="image" src="https://github.com/user-attachments/assets/0990a033-35a3-4f04-b83a-13fe6cd04007" />
+
+<img width="706" height="365" alt="image" src="https://github.com/user-attachments/assets/09ebf7fe-f776-4722-bb10-ffbe9c4d8285" />
+
+A time series is said to be **stationary** if its statistical properties (like **mean** and **variance**) don't change over time.
+
+### What does Stationary Data look like?
+* **Constant Average:** The data jitters around a straight line; it doesn't trend up or down.
+* **Stable Spread (Variance):** The size of the fluctuations is constant; no "funnel" shape where waves get bigger over time.
+* **No Seasonality:** There are no repeating periodic waves.
+
+> **💡 Real-World Example:** Facility managers want stationary temperature readings (approx 20°C). If the mean starts drifting up, it indicates a cooling unit failure.
+
+### 🛠 Technical Insight: Testing & Fixing
+Non-stationary data is hard to model because the "rules" keep changing.
+* **Test:** We use the **Augmented Dickey-Fuller (ADF)** test.
+    * *p-value < 0.05:* Data is Stationary (Good ✅).
+    * *p-value > 0.05:* Data is Non-Stationary (Needs work ❌).
+* **Fix:** We usually apply **Differencing** ($y_t - y_{t-1}$) or **Log Transformation** to stabilize the mean and variance.
+
+**Why this matters:**
+Non-stationary data have a moving baseline. Before modeling with algorithms like ARIMA, we must transform the data to make it stationary.
+
+---
+
+## 📊 Summary: Comparison Matrix (Kavramsal Karşılaştırma)
+
+A cheat sheet for Data Scientists to manage these characteristics.
+
+| Characteristic | What is it? | Why is it a problem? | How to handle/fix it? | Related Models/Tests |
+| :--- | :--- | :--- | :--- | :--- |
+| **Temporal Order** | Data follows a strict time sequence ($t_1, t_2, t_3...$). | Shuffling destroys the relationship and causes **Data Leakage**. | **No Shuffling!** Use TimeSeriesSplit (Expanding Window) or Rolling Window. | RNN, LSTM, GRU, ARIMA |
+| **Autocorrelation** | Current value depends on past values ($y_t \approx y_{t-1}$). | Violates standard regression "independence" assumption. | Use Lag Features (creating columns for $t-1, t-7$) to feed this info to the model. | **ACF / PACF Plots**, Durbin-Watson Test |
+| **Stationarity** | Mean and variance do not change over time. | Most statistical models assume the "rules" of data stay constant. Trends break this. | **Differencing** ($y_t - y_{t-1}$), Detrending, or Log Transformation. | **Augmented Dickey-Fuller (ADF) Test**, KPSS Test |
+
+
+# 🧠 Data Science Uzman Analizi ve Teknik Eklemeler
+
+> **Uzman Görüşü:** Metnin verdiği temel çok sağlam, ancak bir uzman olarak şunları eklemeliyiz:
+
+---
+
+## 1. Temporal Order (Zaman Sırası) & Validation
+
+* ❌ **Eksik:** Metin sadece "karıştırmayın" (don't shuffle) diyor.
+* ✅ **Teknik Ekleme:** Doğrulama (Validation) için standart *K-Fold Cross Validation* kullanılamaz. Bunun yerine **TimeSeriesSplit** (Expanding Window) veya **Rolling Window** yöntemleri kullanılmalıdır.
+
+---
+
+## 2. Autocorrelation (Otokorelasyon)
+
+* ❌ **Eksik:** "Bugün dünü tekrar eder" denmiş ama nasıl ölçülür?
+* ✅ **Teknik Ekleme:** Bunu ölçmek için **ACF (Autocorrelation Function)** ve **PACF (Partial Autocorrelation Function)** grafikleri (korelogramlar) kullanılır. **ARIMA** modelindeki `p` ve `q` parametreleri bu grafiklere bakarak seçilir.
+
+---
+
+## 3. Stationarity (Durağanlık)
+
+* ❌ **Eksik:** Gözle kontrol (visual inspection) yeterli değildir.
+* ✅ **Teknik Ekleme:** İstatistiksel test şarttır. En meşhuru **Augmented Dickey-Fuller (ADF)** testidir.
+    * Eğer **p-value < 0.05** ise durağandır deriz.
+    * Değilse, **Differencing** ($y_t - y_{t-1}$) işlemi uygulanır.
