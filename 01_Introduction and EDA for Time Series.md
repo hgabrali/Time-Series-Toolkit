@@ -514,6 +514,7 @@ Trend, verinin **uzun vadeli (long-term)** hareketidir. Kısa vadeli dalgalanmal
 > * Her Aralık ayında artış -> **Seasonality**.
 > * Son 5 yıldır satışların sürekli artması -> **Trend**.
 
+---
 
 
   
