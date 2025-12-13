@@ -641,5 +641,126 @@ Trend, verinin **uzun vadeli (long-term)** hareketidir. Kısa vadeli dalgalanmal
 
 ---
 
+# 📚 Quiz 2: Technical Analysis & Expert Explanations
+
+Bu döküman, Zaman Serisi Modelleme (Time-Series Modeling) üzerine yapılan Quiz 2'nin sorularını ve her bir cevabın arkasındaki teknik mantığı detaylandırmaktadır.
+
+---
+
+## 1. Exploratory Data Analysis (EDA)
+
+> **Question:** What is the purpose of performing Exploratory Data Analysis (EDA) in time-series forecasting?
+>
+> ✅ **Correct Answer:** **B - To understand the structure, trends, and anomalies in the dataset**
+
+### 💡 Uzman Açıklaması:
+Zaman serisi analizinde EDA, standart bir veri analizinden daha kritiktir. Bir modele veriyi vermeden önce serinin karakteristiğini belirlememiz gerekir. Buna **"Decomposition" (Ayrıştırma)** denir.
+
+* **Structure (Yapı):** Veri durağan mı (**Stationary**) yoksa durağan değil mi? (ADF Testi öncesi görsel kontrol).
+* **Trend:** Veride uzun vadeli bir artış veya azalış var mı? (Örn: Yıllık büyüme).
+* **Seasonality (Mevsimsellik):** Belirli periyotlarda (haftalık, aylık) tekrarlayan kalıplar var mı?
+* **Anomalies:** Siyah Kuğu (**Black Swan**) olayları veya veri hataları var mı?
+
+Eğer bunları EDA ile tespit etmezsek, seçeceğimiz model (örneğin **ARIMA** mı yoksa **Prophet** mi?) yanlış olacaktır.
+
+
+
+---
+
+## 2. Memory Management in Large Datasets
+
+> **Question:** Why is only part of the train.csv file loaded into memory in Google Colab?
+>
+> ✅ **Correct Answer:** **C - The file is too large to fit in Colab's memory.**
+
+### 💡 Uzman Açıklaması:
+Bu, **"Big Data"** ile çalışan zaman serisi projelerinin (özellikle perakende/retail forecasting) kronik sorunudur. Google Colab'in ücretsiz sürümü genellikle 12GB - 16GB RAM sunar. `train.csv` gibi milyonlarca satırlık (örneğin 50-100 milyon satır) bir veri seti diskte 5GB yer kaplasa bile, Pandas bunu RAM'e yüklediğinde (DataFrame overhead'i ve veri tipleri nedeniyle) 15-20GB alana ihtiyaç duyabilir.
+
+* **Teknik Çözüm:** Veriyi parçalar halinde okumak (**chunking**) veya **Dask / Polars** gibi bellek dostu kütüphaneler kullanmak gerekir. Aksi takdirde **"OOM (Out of Memory) Error"** alır ve kernel çöker.
+
+---
+
+## 3. Outlier Detection (Aykırı Değer Tespiti)
+
+> **Question:** Which statistical measure is used to detect outliers in unit_sales?
+>
+> ✅ **Correct Answer:** **C - Z-score
+
+<img width="549" height="385" alt="image" src="https://github.com/user-attachments/assets/46aacb1d-b426-4bca-9c22-7bcf585b1963" />
+
+### 💡 Uzman Açıklaması:
+Aykırı değerler (**Outliers**), zaman serisi modellerinin (özellikle karesel hata kullananların) öğrenme sürecini bozar.
+
+* **Z-Score Nedir?** Bir veri noktasının, ortalamadan kaç standart sapma ($\sigma$) uzakta olduğunu gösterir.
+    * **Formülü:** $$Z = \frac{x - \mu}{\sigma}$$
+* **Uygulama:** Genellikle bir satış verisinin Z-skoru $|Z| > 3$ ise (yani ortalamadan 3 standart sapma uzaktaysa), bu veri istatistiksel olarak bir **"anomali"** kabul edilir. Mean veya Median tek başına aykırı değeri göstermez, sadece merkezi eğilimi gösterir.
+
+
+
+
+---
+
+## 4. Frequency & Missing Values (Eksik Tarihler)
+
+> **Question:** Why is it important to fill missing dates with zero sales in time-series data?
+>
+> ✅ **Correct Answer:** **D - To ensure consistent time steps and accurate modeling.**
+
+### 💡 Uzman Açıklaması:
+Zaman serisi modelleri (**ARIMA, LSTM, Transformers**), verinin sürekli ve düzenli bir frekansta (**Frequency Continuity**) aktığını varsayar.
+
+* **Sorun:** Eğer bir mağaza Pazar günü kapalıysa ve veri setinde Pazar günü satırı hiç yoksa, model Cumartesi'den Pazartesi'ye geçerken bunu "1 gün sonrası" sanır. Oysa arada 2 gün fark vardır. Bu durum **"Lag"** (gecikme) hesaplamalarını bozar.
+* **Çözüm:** Eksik tarihleri araya ekleyip (**Reindexing**), satış değerine "0" basmalıyız. Çünkü perakendede "Kayıt yok" genellikle "Satış yok" anlamına gelir (**Missing Not At Random**).
+
+
+
+---
+
+## 5. Feature Engineering (Date Features)
+
+> **Question:** Which of the following features can be engineered from the date column?
+>
+> ✅ **Correct Answer:** **A - Day of the week & B - Year** *(Soruda A ve B doğru kabul edilmiş, C elenmiş)*
+
+### 💡 Uzman Açıklaması:
+Bu işlem **"Date Decomposition"** veya **"Calendar Features"** olarak adlandırılır. Makine öğrenmesi modelleri (**XGBoost, Random Forest**) ham tarihi (örneğin "2023-12-01") anlayamaz. Bunu parçalamamız gerekir:
+
+* **Day of the Week (Haftanın Günü):** Haftalık mevsimselliği (Hafta sonu vs. Hafta içi) yakalamak için kritiktir.
+* **Year (Yıl):** Uzun vadeli trendi (Enflasyon veya büyüme) yakalamak için kullanılır.
+* **Neden C değil?** *"Rolling average"* (Hareketli ortalama) sadece tarihten türetilemez; satış (**target**) verisine ihtiyaç duyar. A ve B ise sadece `date` kolonuna bakarak üretilebilir.
+
+---
+
+## 6. Smoothing & Noise Reduction
+
+> **Question:** What is the purpose of adding rolling averages to the dataset?
+>
+> ✅ **Correct Answer:** **B - To smooth out short-term fluctuations in the data**
+
+### 💡 Uzman Açıklaması:
+Zaman serilerinde günlük veriler genellikle çok "gürültülüdür" (**Noise**). Rastgele günlük değişimler, asıl trendi görmeyi zorlaştırır.
+
+* **Teknik İşlev:** Rolling Average (Hareketli Ortalama), bir **"Low-Pass Filter"** (Alçak geçiren filtre) gibi davranır. Yüksek frekanslı gürültüyü (günlük zıplamaları) tıraşlar ve alttaki ana trendi ortaya çıkarır.
+* **Feature Importance:** Ayrıca ML modelleri için çok güçlü bir **"Lag Feature"**dır. "Son 7 günün ortalaması", yarının satışını tahmin etmek için dünkü satıştan daha iyi bir belirleyici olabilir.
+
+
+
+---
+
+## 7. Seasonality (Mevsimsellik)
+
+> **Question:** What sales pattern is typically observed in retail data during the end of the year?
+>
+> ✅ **Correct Answer:** **A - Sales increase due to holiday shopping.**
+
+### 💡 Uzman Açıklaması:
+Bu soru **"Seasonality"** (Mevsimsellik) ve **"Holiday Effects"** (Tatil Etkileri) kavramlarını test eder.
+
+* Perakende zaman serilerinde (**Retail Time-Series**), yılın son çeyreği (Q4) genellikle "Black Friday", "Cyber Monday" ve "Christmas/Yılbaşı" nedeniyle dramatik bir artış (**Spike**) gösterir.
+* Bu, **"Durağan Olmayan" (Non-stationary)** bir davranıştır. Model kurarken bu dönemi özel olarak işaretlemek (**Holiday Flag**) veya Fourier Serileri ile bu döngüyü modele öğretmek şarttır. Aksi takdirde model, bu artışı kalıcı bir trend sanıp Ocak ayında fahiş hatalı tahminler yapabilir.
+
+
+
+
 
   
