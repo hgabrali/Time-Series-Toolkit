@@ -278,6 +278,71 @@ Non-stationary data is hard to model because the "rules" keep changing.
 **Why this matters:**
 Non-stationary data have a moving baseline. Before modeling with algorithms like ARIMA, we must transform the data to make it stationary.
 
+# 📉 Zaman Serisi Analizi: Durağanlık (Stationarity)
+
+Zaman serisi analizinde **"Durağanlık" (Stationarity)**, modellemenin en temel ön koşuludur.
+
+
+
+---
+
+## 1. Sorun: Durağan Olmayan Veri (The Moving Target)
+
+Veri biliminde **"Model eğitmek"**, geçmişteki kalıpları (pattern) öğrenip geleceğe uygulamaktır. Ancak veri **Durağan Değilse (Non-Stationary)**, istatistiksel özellikleri (ortalama, varyans, kovaryans) zamanla değişiyor demektir.
+
+> 💡 **Teknik Analoji:**
+> Futbol oynadığını düşün ama kale direkleri maç sırasında sürekli yer değiştiriyor ve sahanın eğimi her 10 dakikada bir artıyor. Gol atman (doğru tahmin yapman) imkansızlaşır.
+
+**Sorun:** Kurallar sürekli değiştiği için, modelin geçmiş veriden öğrendiği katsayılar (coefficients) gelecek için geçersiz hale gelir.
+
+---
+
+## 2. Teşhis: Augmented Dickey-Fuller (ADF) Testi
+
+Verinin durağan olup olmadığını göz kararı değil, istatistiksel bir hipotez testi olan **ADF Testi** ile ölçeriz. Bu test, seride bir **"Birim Kök" (Unit Root)** olup olmadığını araştırır.
+
+**Buradaki mantık şudur:**
+* $H_0$ (Null Hipotez): Seri durağan değildir (Birim kök vardır).
+* $H_1$ (Alternatif Hipotez): Seri durağandır.
+
+### Sonuçları Nasıl Okuruz?
+
+* **$p\text{-value} < 0.05$ (Örn: 0.01):** $H_0$ reddedilir.
+    * **Karar:** İstatistiksel olarak %95 güvenle serimiz **Durağandır (Stationary)**.
+    * **Durum:** Harika (Good ✅). Doğrudan modellemeye geçebilirsin.
+
+* **$p\text{-value} > 0.05$ (Örn: 0.25):** $H_0$ reddedilemez.
+    * **Karar:** Serimiz **Durağan Değildir (Non-Stationary)**.
+    * **Durum:** Müdahale gerekli (Needs work ❌). Trend veya değişen varyans var.
+
+---
+
+## 3. Tedavi (Fix): Dönüşüm İşlemleri
+
+ADF testi "Durağan Değil" dediyse, veriyi "zorla" durağan hale getirmemiz gerekir. İki ana ilacımız var:
+
+### 🔹 Differencing (Fark Alma)
+Serideki trendi (yukarı/aşağı eğilim) yok etmek için kullanılır.
+* **İşlem:** Bugünkü değerden dünkü değeri çıkarırız ($y_t - y_{t-1}$).
+* **Etkisi:** Bu işlem **ortalamayı (mean)** sabitler. ARIMA modelindeki **"I" (Integrated)** parametresi (d değeri) tam olarak budur.
+
+### 🔹 Log Dönüşümü (Log Transformation)
+Serideki dalgalanma boyutu zamanla artıyorsa (heteroskedastisite), varyansı sabitlemek için kullanılır.
+* **Etkisi:** **Varyansı (variance)** stabilize eder ve seriyi lineer hale getirir.
+
+---
+
+## 4. Neden Bu Kadar Önemli? (The "Why")
+
+**ARIMA** (AutoRegressive Integrated Moving Average) gibi klasik algoritmalar, verinin **"temel çizgisinin" (baseline)** sabit olduğuna güvenir.
+
+* Eğer verin durağan değilse, modelin trendi veya mevsimselliği "gerçek sinyal" zanneder ve uzun vadede hatalı tahminler (**spurious regression**) üretir.
+* Biz önce veriyi dönüştürürüz (Durağan yaparız), modelimizi kurarız, tahmini yaparız ve en sonunda elde ettiğimiz sonucu **tersine dönüştürerek (inverse transform)** orijinal ölçeğe geri döneriz.
+
+
+
+
+
 ---
 
 ## 📊 Summary: Comparison Matrix (Kavramsal Karşılaştırma)
