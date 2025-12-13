@@ -41,7 +41,6 @@ Zaman serisi şu kritik soruları çözer:
 
 ## 3. Karşılaştırmalı Yöntemler Tablosu (Model Comparison Matrix)
 
-Metinde Sprint 2'de geçen modellerin teknik karşılaştırmasını senin için hazırladım:
 
 | Model Türü | Örnekler | Ne Zaman Kullanılır? | Avantajı | Dezavantajı |
 | :--- | :--- | :--- | :--- | :--- |
