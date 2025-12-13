@@ -1,5 +1,11 @@
 # 📉 Zaman Serisi Analizi: Ayrıştırma ve Bileşenler (Time Series Decomposition)
 
+* **What is the purpose of performing Exploratory Data Analysis (EDA) in time-series forecasting?**
+>
+> ✅ To understand the structure, trends, and anomalies in the dataset.
+
+
+
 Zaman serisi analizinde **"Decomposition"** (Ayrıştırma), karmaşık bir sinyali, onu oluşturan temel bileşenlere ayırma işlemidir. Bir zaman serisi ($Y_t$) genellikle şu formülle ifade edilir:
 
 $$Y_t = Trend_t + Seasonality_t + Residual_t$$
