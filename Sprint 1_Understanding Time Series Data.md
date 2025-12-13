@@ -6,7 +6,7 @@ Time Series (Zaman Serisi) analizi veri biliminin en "nazlı" ama en güçlü al
 
 ## 🧠 Bölüm 1: Time Series Modelling
 
-Verilen metin, zaman serilerinin temel felsefesini ve bir proje döngüsünü (pipeline) anlatıyor. Bir uzman olarak satır aralarını şöyle okumalıyız:
+
 
 ### 1. Zaman Serisini "Benzersiz" Yapan Nedir? (The Unique Nature)
 
