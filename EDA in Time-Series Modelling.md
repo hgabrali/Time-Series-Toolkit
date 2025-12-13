@@ -1,9 +1,5 @@
 # 📉 Zaman Serisi Analizi: Ayrıştırma ve Bileşenler (Time Series Decomposition)
 
-
-
-# 📉 Time Series Decomposition: Components & Analysis
-
 Zaman serisi analizinde **"Decomposition"** (Ayrıştırma), karmaşık bir sinyali, onu oluşturan temel bileşenlere ayırma işlemidir. Bir zaman serisi ($Y_t$) genellikle şu formülle ifade edilir:
 
 $$Y_t = Trend_t + Seasonality_t + Residual_t$$
