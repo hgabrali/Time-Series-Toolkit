@@ -649,7 +649,7 @@ Bu döküman, Zaman Serisi Modelleme (Time-Series Modeling) üzerine yapılan Qu
 
 ## 1. Exploratory Data Analysis (EDA)
 
-> **Question:** What is the purpose of performing Exploratory Data Analysis (EDA) in time-series forecasting?
+> **Question:** What is the purpose of performing Exploratory Data Analysis (EDA) in time-series forecasting? 
 >
 > ✅ **Correct Answer:** **B - To understand the structure, trends, and anomalies in the dataset**
 
