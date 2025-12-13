@@ -4,9 +4,9 @@
 >
 > ✅ To understand the structure, trends, and anomalies in the dataset.
 
+* Zaman serisi analizinde EDA, standart bir veri analizinden daha kritiktir. Bir modele veriyi vermeden önce serinin karakteristiğini belirlememiz gerekir. Buna "Decomposition" (Ayrıştırma) denir.
 
-
-Zaman serisi analizinde **"Decomposition"** (Ayrıştırma), karmaşık bir sinyali, onu oluşturan temel bileşenlere ayırma işlemidir. Bir zaman serisi ($Y_t$) genellikle şu formülle ifade edilir:
+**"Decomposition"** (Ayrıştırma), karmaşık bir sinyali, onu oluşturan temel bileşenlere ayırma işlemidir. Bir zaman serisi ($Y_t$) genellikle şu formülle ifade edilir:
 
 $$Y_t = Trend_t + Seasonality_t + Residual_t$$
 
