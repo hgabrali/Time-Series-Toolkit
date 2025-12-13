@@ -28,7 +28,7 @@ Standart Makine Öğrenmesi (Machine Learning) algoritmaları genellikle veriler
 
 ### 2. Endüstriyel Kullanım Alanları ve Yöntemler (Derinlemesine Bakış)
 
-Metinde geçen sektörlerde, zaman serisi şu kritik soruları çözer:
+Zaman serisi şu kritik soruları çözer:
 
 * **Finance (Finans):** Sadece fiyat tahmini değil, "Volatilite (Oynaklık)" tahmini yapılır.
     * *Yöntem:* `GARCH` modelleri, `LSTM` ağları.
