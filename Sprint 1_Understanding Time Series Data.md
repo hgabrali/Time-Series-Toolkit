@@ -190,6 +190,67 @@ In Data Science, we don't just guess autocorrelation; we measure it using:
 **Why this matters:**
 Counting autocorrelated data without adjusting for it is like polling the same person every hour. Your "sample size" looks big, but the information hasn't grown. Models like **ARIMA** specifically use this feature (The 'AR' part stands for AutoRegressive).
 
+# 📈 Zaman Serisi Analizi: ACF ve PACF
+
+Veri Biliminde (özellikle Zaman Serisi Analizinde), bir verinin geçmişteki haliyle ne kadar ilişkili olduğunu sadece "tahmin etmeyiz"; bunu **ACF** ve **PACF** adı verilen iki temel metrik ile matematiksel olarak ölçeriz.
+
+---
+
+## 1. Otokorelasyon Nedir?
+Basitçe; bir zaman serisindeki verilerin, önceki zaman adımlarındaki (lag) kendi değerleriyle olan ilişkisidir. 
+
+> *"Bugünkü değer, dünkü veya geçen haftaki değerden ne kadar etkilendi?"* sorusunun cevabıdır.
+
+---
+
+## 2. Ölçüm Araçları: ACF ve PACF
+
+### 🔹 ACF (Autocorrelation Function - Otokorelasyon Fonksiyonu)
+ACF, serinin kendisiyle farklı gecikmelerdeki (lags) **toplam korelasyonunu** gösterir.
+
+* **Teknik Anlamı:** $t$ anındaki bir veri ile $t-k$ anındaki veri arasındaki ilişkiyi ölçerken, aradaki diğer tüm gecikmelerin etkisini de **dahil eder**.
+* **Örnek:** Bugünün hava sıcaklığı ile 3 gün önceki sıcaklık arasındaki ilişkiye bakıyorsan, ACF aradaki (dünkü ve evvelsi günkü) sıcaklıkların taşıdığı etkiyi de hesaba katarak "kümülatif/toplam" bir ilişki sunar.
+
+### 🔹 PACF (Partial Autocorrelation Function - Kısmi Otokorelasyon Fonksiyonu)
+PACF, aradaki gecikmelerin etkilerini **arındırarak** (removing effects), iki zaman noktası arasındaki **saf (doğrudan)** korelasyonu gösterir.
+
+* **Teknik Anlamı:** $t$ anı ile $t-k$ anı arasındaki ilişkiye bakarken, aradaki gecikmelerin ($t-1, t-2...$) açıklayabildiği lineer bağımlılığı çıkarır ve geriye kalan "saf" ilişkiyi verir.
+* **Örnek:** Bugünün sıcaklığı ile 3 gün önceki sıcaklık arasındaki ilişkiye bakarken; dünün ve evvelsi günün etkisini matematiksel olarak "sıfırlar/siler". Sadece 3 gün öncesinin bugüne **doğrudan** etkisini görürsün.
+
+---
+
+## 3. Neden Önemlidir? (İstatistiksel Yanılsama)
+
+Metninde geçen *"aynı kişiye her saat anket yapmak"* analojisi teknik olarak **"Etkin Örneklem Büyüklüğü" (Effective Sample Size)** kavramına işaret eder.
+
+Eğer verinde yüksek otokorelasyon varsa, her yeni veri noktası aslında sana tamamen "yeni" bir bilgi vermiyordur; eski bilginin tekrarını taşıyordur.
+
+* 🔴 **Sorun:** Otokorelasyonu hesaba katmazsan, modelin elinde çok fazla veri (sample size) olduğunu sanar ve istatistiksel testlerde (t-testi gibi) aşırı iyimser (yanlış pozitif) sonuçlar üretir.
+* 🟢 **Çözüm (ARIMA):** ARIMA modellerindeki **"AR" (AutoRegressive)** kısmı tam olarak bu işe yarar. Geleceği tahmin etmek için geçmişteki otokorelasyon yapısını bir *feature* (özellik) olarak kullanır.
+
+---
+
+## 4. Somut Örnekler
+
+### 🍦 Örnek 1: Dondurma Satışları (Mevsimsellik)
+* **Senaryo:** Bir dondurmacının günlük satış verilerini inceliyorsun.
+* **ACF Analizi:** ACF grafiğine baktığında muhtemelen her 7. günde (Lag 7) yüksek bir çubuk görürsün. Bu, geçen Pazar satışlarının bu Pazar satışlarıyla ilişkili olduğunu (haftalık döngü) gösterir. ACF burada azalara giden dalgalı bir yapı sergiler.
+* **PACF Analizi:** PACF grafiğinde ise sadece 1. günde (dün) ve 7. günde (geçen hafta aynı gün) keskin çubuklar görürsün, diğer günler sıfıra yakındır. Bu, modeline *"Sadece dünü ve geçen haftaki aynı günü baz al, aradakiler gürültü"* demeni sağlar.
+
+### 📉 Örnek 2: Borsa Fiyatı (Momentum)
+* **Senaryo:** Bir hisse senedinin kapanış fiyatı.
+* **ACF Durumu:** Bugünün fiyatı dünkine çok yakındır, dünkü de evvelsi güne... ACF grafiği çok yavaş azalır (Lag 1 çok yüksek, Lag 2 biraz daha az yüksek...). Çünkü fiyatlar "hafızalıdır".
+* **PACF Durumu:** PACF grafiğinde muhtemelen sadece **Lag 1** (bir önceki gün) çok yüksek çıkar, Lag 2 ve sonrası aniden düşer.
+* **Yorum:** Bu, *"Bugünün fiyatını en iyi açıklayan şey dünkü fiyattır. Dünü bildikten sonra, 5 gün öncesini bilmenin bana ekstra ve doğrudan bir faydası yoktur"* anlamına gelir.
+
+---
+
+### 💡 Özetle
+Veri Bilimci olarak model kurarken (örneğin ARIMA'daki `p` ve `q` parametrelerini seçerken) ACF ve PACF grafiklerine bakarak **"Hangi geçmiş günleri modele dahil etmeliyim?"** sorusuna karar veririz.
+
+
+
+
 ---
 
 ## 3. Stationarity (Durağanlık)
