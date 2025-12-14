@@ -120,11 +120,6 @@ Bu bölümde, büyük veri dosyalarını yönetmek için **"Chunking"** (Parçal
 
 ---
 
-# PART 4:
-
-
-
-
 
 ## 🛤️ Workflow Steps
 
@@ -165,6 +160,14 @@ Analyze how specific events (National holidays, transferred days, bridges) corre
 *(Adım 7: Bozulabilir Ürünleri Analiz Etme)*
 Investigate if perishable goods (weighted higher in scoring) show different sales patterns compared to non-perishables.
 *(Bozulabilir malların [puanlamada ağırlığı daha yüksek olan], bozulmayanlara kıyasla farklı satış modelleri gösterip göstermediğini araştırma.)*
+
+
+---
+
+# PART 4:
+
+
+
 
 ---
 ---
