@@ -103,7 +103,7 @@ Bu bölümde, büyük veri dosyalarını yönetmek için **"Chunking"** (Parçal
 
 ---
 
-# PART 3: # 🔍 EDA for Time-Series Data
+# PART 3:🔍 EDA for Time-Series Data
 *(Zaman Serisi Verileri için Keşifçi Veri Analizi)*
 
 **EDA (Exploratory Data Analysis)** is a crucial step before applying machine learning models, especially in **time-series forecasting**. We will focus on:
@@ -120,11 +120,16 @@ Bu bölümde, büyük veri dosyalarını yönetmek için **"Chunking"** (Parçal
 
 ---
 
+# PART 4:
+
+
+
+
+
 ## 🛤️ Workflow Steps
-*(İş Akış Adımları)*
+
 
 These are the steps we will follow:
-*(İzleyeceğimiz adımlar şunlardır:)*
 
 ### **Step 1: Checking for Missing Data**
 *(Adım 1: Eksik Veri Kontrolü)*
