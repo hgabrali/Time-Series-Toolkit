@@ -1193,3 +1193,83 @@ Bu kısıtlamaları aşmak için kullanılan diğer klasik ve modern yöntemler:
 > **💡 Expert Verdict:**
 > ARIMA/SARIMA are excellent for **short-term forecasting** on **simple, stable datasets** where interpretability is key. However, for complex, volatile, or multi-seasonal real-world data, exploring **Machine Learning** or hybrid methods (like Prophet) is often necessary.
 > *(Uzman Kararı: ARIMA/SARIMA, yorumlanabilirliğin kilit olduğu basit ve kararlı veri setlerinde kısa vadeli tahminler için mükemmeldir. Ancak karmaşık, oynak veya çoklu mevsimselliğe sahip gerçek dünya verileri için Makine Öğrenmesi veya hibrit yöntemleri keşfetmek genellikle gereklidir.)*
+
+# 📝 Quiz 3: ARIMA & SARIMA Conceptual Check
+*(Quiz 3: ARIMA ve SARIMA Kavramsal Kontrol)*
+
+Aşağıdaki sorular ve teknik açıklamalar, Zaman Serisi Modelleme konusundaki temel kavramları (ARIMA bileşenleri, SARIMA'nın farkı, Durağanlık ve Mevsimsellik) pekiştirmek için hazırlanmıştır.
+
+---
+
+### ❓ Question 1
+**What does ARIMA stand for?**
+*(ARIMA neyin kısaltmasıdır?)*
+
+* **Correct Answer (Doğru Cevap):** **B - Autoregressive Integrated Moving Average**
+
+> **💡 Technical Explanation (Teknik Açıklama):**
+> ARIMA, zaman serisi analizinin üç temel bileşeninin matematiksel birleşimidir. İsim, modelin iç yapısını doğrudan tarif eder:
+> * **AR (AutoRegressive):** Gelecekteki değerin, geçmiş değerlerin doğrusal bir kombinasyonu olduğunu varsayar ($p$).
+> * **I (Integrated):** Seriyi **durağan** (*stationary*) hale getirmek için uygulanan fark alma işlemidir ($d$).
+> * **MA (Moving Average):** Modelin tahmin hatasını simüle eder ($q$).
+>
+> *Özetle ARIMA, verinin kendi geçmişiyle (AR) ve geçmiş hata paylarıyla (MA) ilişkisini kurarken, trend etkisinden arındırılmış (I) bir yapı üzerinde çalışır.*
+
+---
+
+### ❓ Question 2
+**Which of the following models is best suited for time-series data with strong seasonal patterns?**
+*(Aşağıdaki modellerden hangisi güçlü mevsimsel kalıplara sahip zaman serisi verileri için en uygundur?)*
+
+* **Correct Answer (Doğru Cevap):** **C - SARIMA**
+
+> **💡 Technical Explanation (Teknik Açıklama):**
+> Standart ARIMA modelleri "kısa vadeli hafızaya" sahiptir ve genel trendleri yakalar. Ancak veride düzenli aralıklarla tekrarlayan (örn. her Aralık ayında artan satışlar) güçlü bir **mevsimsellik** varsa yetersiz kalır.
+>
+> **SARIMA (Seasonal ARIMA)**, modele ikinci bir katman ekleyerek bu sorunu çözer. Sadece "dün" ($t-1$) ile değil, "geçen sezonun aynı dönemi" ($t-s$) ile de ilişki kurar.
+
+---
+
+### ❓ Question 3
+**What is the purpose of the Seasonal Period (m) in SARIMA?**
+*(SARIMA'da Mevsimsel Periyodun (m) amacı nedir?)*
+
+* **Correct Answer (Doğru Cevap):** **A - To determine the length of the seasonal cycle**
+*(Mevsimsel döngünün uzunluğunu belirlemek)*
+
+> **💡 Technical Explanation (Teknik Açıklama):**
+> Literatürde genellikle $s$ veya $m$ olarak gösterilen bu parametre, modelin "bir tam döngüyü tamamlamak için kaç zaman adımına ihtiyaç duyduğunu" tanımlar.
+> * **Aylık Veri:** $m=12$ (Yıllık desen).
+> * **Günlük Veri:** $m=7$ (Haftalık desen).
+>
+> Teknik olarak $m$, mevsimsel fark alma işleminde hangi gecikmedeki değerin çıkarılacağını ($y_t - y_{t-m}$) belirler.
+
+---
+
+### ❓ Question 4
+**What is the primary difference between ARIMA and SARIMA?**
+*(ARIMA ve SARIMA arasındaki temel fark nedir?)*
+
+* **Correct Answer (Doğru Cevap):** **C - SARIMA includes additional terms to handle seasonal patterns, unlike ARIMA.**
+*(SARIMA, ARIMA'dan farklı olarak mevsimsel kalıpları işlemek için ek terimler içerir.)*
+
+> **💡 Technical Explanation (Teknik Açıklama):**
+> Fark, matematiksel yapıdadır:
+> * **ARIMA $(p,d,q)$:** Yalnızca mevsimsel olmayan otokorelasyonu modeller.
+> * **SARIMA $(p,d,q) \times (P,D,Q)_m$:** ARIMA'yı kapsar ancak ona **çarpımsal** (*multiplicative*) bir yapı ekler.
+>
+> SARIMA, hem "dünkü hatayı" hem de "geçen yılın aynı günündeki hatayı" denkleme dahil ederek çok katmanlı serileri modeller.
+
+---
+
+### ❓ Question 5
+**Which of the following statements about ARIMA is true?**
+*(ARIMA ile ilgili aşağıdaki ifadelerden hangisi doğrudur?)*
+
+* **Correct Answer (Doğru Cevap):** **B - ARIMA requires data to be stationary for accurate predictions.**
+*(ARIMA, doğru tahminler için verilerin durağan olmasını gerektirir.)*
+
+> **💡 Technical Explanation (Teknik Açıklama):**
+> Bu, ARIMA'nın en temel varsayımıdır. **Durağanlık** (*Stationarity*); ortalama, varyans ve otokovaryansın zamanla değişmemesi anlamına gelir.
+>
+> ARIMA doğrusal bir model olduğu için, geçmişteki katsayıları geleceğe uygular. Eğer veride trend veya değişen varyans varsa, bu katsayılar geçersiz olur. Bu nedenle **"I" (Integrated)** bileşeni ile fark alınarak veri durağanlaştırılır.
