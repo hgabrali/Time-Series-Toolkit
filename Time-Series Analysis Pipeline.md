@@ -59,8 +59,6 @@ Bu bölüm, Klasik Zaman Serisi Yöntemlerinin (*Classical Time-Series Methods*)
 
 ---
 
-
-
 ### 📝 Summary of Critical Actions
 *(Kritik Aksiyonların Özeti)*
 
@@ -72,3 +70,35 @@ Bu bölüm, Klasik Zaman Serisi Yöntemlerinin (*Classical Time-Series Methods*)
     *(MA Derecesi: ACF grafiğine bak. Kesilme noktasını seç.)*
 4.  **Validation:** Ensure residuals resemble **White Noise** and minimize **AIC**.
     *(Doğrulama: Artıkların Beyaz Gürültüye benzediğinden emin ol ve AIC'yi minimize et.)*
+
+
+# 🗓️ Classical Time-Series Methods: SARIMA
+*(Klasik Zaman Serisi Yöntemleri: SARIMA)*
+
+**SARIMA** (*Seasonal AutoRegressive Integrated Moving Average*), klasik ARIMA modelinin, verilerdeki **mevsimsel döngüleri** (*seasonal cycles*) modelleyebilecek şekilde genişletilmiş halidir. Standart ARIMA modelleri serinin **kısa vadeli hafızasını** (*short-term memory*) yakalarken, SARIMA haftalık veya aylık tekrarlayan desenleri modeller.
+
+
+
+### 📊 Comparative Analysis Matrix: SARIMA Architecture & Workflow
+*(Karşılaştırmalı Analiz Matrisi: SARIMA Mimarisi ve İş Akışı)*
+
+| Analysis Area (Analiz Alanı) | Problems & Components (Sorunlar ve Bileşenler) | Technical Detail & Importance (Teknik Detay ve Önem) | Solution Methods (Çözüm Yöntemleri) | Tools & Tests (Araçlar ve Testler) |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Seasonality Handling**<br>*(Mevsimsellik Yönetimi)* | **Problem:** ARIMA'nın mevsimsel şokları (örn. Noel satışları) görememesi.<br>**Component:** **Seasonal Period ($s$)**. | **Detail:** $s$, döngünün uzunluğudur (Haftalık veri için $s=7$, Aylık veri için $s=12$).<br>**Importance:** Modelin hangi aralıklarla geçmişe bakacağını belirler. | **Notation:**<br>$$SARIMA(p, d, q) \times (P, D, Q)_s$$<br>Mevsimsel olmayan ve mevsimsel parametrelerin çarpımı. | • **Seasonal Decomposition:** Trend ve mevsimselliği görsel ayırma.<br>• **ACF Plot:** $s, 2s, 3s$ gecikmelerindeki (*lags*) sıçramaları kontrol etme. |
+| **2. Seasonal AutoRegression ($P$)**<br>*(Mevsimsel Oto-Regresyon)* | **Problem:** Bu ayın satışlarının, geçen yılın aynı ayındaki satışlarla ilişkisi.<br>**Component:** **Seasonal AR ($P$)**. | **Detail:** "Kaç tane mevsimsel dün ($t-s, t-2s$) bugünü etkiliyor?" sorusuna yanıt verir.<br>**Importance:** Geçmiş sezonların momentumunu bugüne taşır. | **Interaction:**<br>Standart $p$ (dün) ile Mevsimsel $P$ (geçen yıl bugün) birlikte çalışır.<br>**Initial Guess:** Mevsimsel PACF grafiğinde $s$ gecikmesinde büyük sıçrama varsa $P=1$. | • **PACF Plot:** $s$ katlarında (12, 24...) keskin düşüşler aranır.<br>• **Grid Search:** En iyi $P$ değerini deneme yanılma ile bulma. |
+| **3. Seasonal Differencing ($D$)**<br>*(Mevsimsel Fark Alma)* | **Problem:** Mevsimsel trendler (örn. yıldan yıla artan yaz trafiği).<br>**Component:** **Seasonal Integrated ($D$)**. | **Detail:** Mevsimsel seviye kaymalarını (*Level Shifts*) kaldırmak için fark alır ($y_t - y_{t-s}$).<br>**Importance:** Veriyi mevsimsel olarak durgunlaştırır (*Seasonally Stationary*). | **Method:**<br>Genellikle $D=1$ yeterlidir (Seriden geçen yılın aynı ayını çıkarma).<br>**Goal:** ACF artık yavaş bir azalma göstermemelidir. | • **Canova-Hansen Test:** Mevsimsel kararlılık testi.<br>• **Visual Check:** $s$ periyodunda tekrar eden dalgaların düzleşmesi. |
+| **4. Seasonal Moving Average ($Q$)**<br>*(Mevsimsel Hareketli Ortalama)* | **Problem:** Geçmiş sezonlardaki tahmin hatalarının bugüne etkisi.<br>**Component:** **Seasonal MA ($Q$)**. | **Detail:** "Kaç tane mevsimsel hata şoku (*Error Shocks*) kalıcı oluyor?" (Örn: Geçen Aralık hatası bu Aralık'ı düzeltir).<br>**Importance:** Tahminlerin mevsimsel sapmalara karşı dirençli olmasını sağlar. | **Calculation:**<br>Model, $t-s$ zamanındaki hatayı ($e_{t-s}$) kullanarak revize eder.<br>**Initial Guess:** Mevsimsel ACF grafiğinde $s$ gecikmesinde büyük sıçrama varsa $Q=1$. | • **ACF Plot:** $s$ gecikmesindeki (*lag s*) negatif korelasyon veya kesilme noktası. |
+| **5. Model Tuning & Selection**<br>*(Model Ayarlama ve Seçim)* | **Problem:** Toplam 7 parametrenin ($p,d,q,P,D,Q,s$) optimizasyonu.<br>**Component:** **Hyperparameter Tuning**. | **Detail:** Çok sayıda kombinasyon model karmaşıklığını artırır.<br>**Importance:** Yanlış $s$ veya $D$ seçimi, tamamen hatalı tahminlere yol açar. | **Grid-Search Strategy:**<br>• $d$ ve $D$'yi sabit tut.<br>• Küçük bir komşulukta $(p,q)$ ve $(P,Q)$ kombinasyonlarını dene.<br>• **Auto-ARIMA:** Otomatik deneme. | • **AIC/BIC:** Model karşılaştırma (Düşük iyidir).<br>• **Ljung-Box:** Mevsimsel hataların rastgeleliğini test etme. |
+| **6. Evaluation & Success Criteria**<br>*(Değerlendirme ve Başarı Kriterleri)* | **Problem:** Modelin basit bir tahminden daha iyi olup olmadığını kanıtlama.<br>**Component:** **Benchmarking**. | **Detail:** Model, "Saf Mevsimsel Referans" (*Naïve Seasonal Baseline*) ile kıyaslanmalıdır.<br>**Importance:** Karmaşık model basit mantığı geçemiyorsa gereksizdir (*over-engineered*). | **Metrics:**<br>• **AIC:** Model uyumu/karmaşıklığı (Düşük iyidir).<br>• **MAE/RMSE:** Doğruluk (Düşük iyidir).<br>**Formula:** $\hat{y}_t = y_{t-s}$ (Baseline). | • **Out-of-Sample Test:** Tutulan veri setinde test.<br>• **Residual Check:** Hatalar Beyaz Gürültü (*White Noise*) olmalıdır. |
+
+
+
+---
+
+### 🚀 Key Takeaway
+*(Temel Çıkarım)*
+
+* **Logic:** **SARIMA = ARIMA + Seasonal Layer**.
+* **Application:** You only need it when ACF/PACF show repeating **seasonal spikes** (*tekrarlayan mevsimsel sıçramalar*).
+* **The "S" Factor:** While standard ARIMA handles general trends, **SARIMA** is indispensable when "this December" depends heavily on "last December".
+    *(Standart ARIMA genel trendleri yönetirken, "bu Aralık" ayının büyük ölçüde "geçen Aralık" ayına bağlı olduğu durumlarda SARIMA vazgeçilmezdir.)*
