@@ -1589,10 +1589,198 @@ Zaman serisi özellik mühendisliğinde kullanılan üç temel sütun türünün
 >
 > **Correct Syntax:** `shift(1).rolling(7)`
 
-# XGBoost
+
+
+# 🚀 XGBoost for Time-Series Forecasting
+*(Zaman Serisi Tahmini İçin XGBoost)*
 
  <img width="905" height="443" alt="image" src="https://github.com/user-attachments/assets/572c3f18-add6-4445-913a-59eefed430c1" />
 
+**XGBoost** (*Extreme Gradient Boosting*), son yıllarda veri bilimi dünyasını domine eden, özellikle yapılandırılmış/tablosal verilerde (*structured/tabular data*) gösterdiği üstün performansla bilinen güçlü bir makine öğrenimi algoritmasıdır.
 
+Bu bölümde, XGBoost'un teknik altyapısını ve zaman serisi tahminciliğinde nasıl bir regresyon aracı olarak kullanıldığını inceleyeceğiz.
+
+---
+
+## 🧠 What is XGBoost?
+*(XGBoost Nedir?)*
+
+XGBoost, **Karar Ağaçları** (*Decision Trees*) temelli bir topluluk öğrenme (*Ensemble Learning*) yöntemidir. Temel mantığı **Gradient Boosting** prensibine dayanır:
+* **Ensemble Strategy:** Zayıf öğrenicileri (*weak learners - sığ ağaçlar*) bir araya getirerek güçlü bir tahminci oluşturur.
+* **Gradient Descent:** Her yeni ağaç, bir önceki ağacın yaptığı hataları (*residuals*) tahmin etmek ve düzeltmek üzerine eğitilir.
+
+> **💡 Expert Note:** While Random Forest builds trees independent of each other (bagging), XGBoost builds trees sequentially (boosting), where each tree corrects the errors of the previous one.
+> *(Uzman Notu: Rastgele Orman ağaçları birbirinden bağımsız kurarken [bagging], XGBoost ağaçları sıralı kurar [boosting]; her ağaç bir öncekinin hatasını düzeltir.)*
+
+---
+
+## 🌟 Why is XGBoost So Popular?
+*(XGBoost Neden Bu Kadar Popüler?)*
+
+XGBoost, sadece doğruluğu ile değil, mühendislik harikası optimizasyonları ile de öne çıkar.
+
+| Feature (Özellik) | Technical Detail (Teknik Detay) |
+| :--- | :--- |
+| **Accuracy**<br>*(Doğruluk)* | Düşük varyans ve düşük yanlılık (*bias*) dengesini mükemmel kurar. Kaggle yarışmalarının vazgeçilmezidir. |
+| **Speed & Performance**<br>*(Hız ve Performans)* | **Parallel Processing:** Ağaç oluşturma sırasında özellikleri paralel işler.<br>**Tree Pruning:** Ağacı geriye doğru budayarak (*max_depth*) gereksiz dalları temizler. |
+| **Handling Missing Data**<br>*(Eksik Veri Yönetimi)* | **Sparsity-aware Split Finding:** Eksik değerler için "varsayılan" bir yön (*default direction*) öğrenir. Ön işleme yapmadan (*imputation*) eksik veriyi yönetebilir. |
+| **Feature Importance**<br>*(Özellik Önemi)* | Veri setindeki hangi özelliklerin (örn. `lag_7`, `rolling_mean`) tahmine en çok katkı sağladığını otomatik olarak hesaplar (`gain`, `weight`, `cover`). |
+| **Regularization**<br>*(Düzenlileştirme)* | **L1 (Lasso) & L2 (Ridge):** Aşırı öğrenmeyi (*overfitting*) engellemek için modelin karmaşıklığını cezalandıran yerleşik parametrelere sahiptir. |
+
+---
+
+## 🛠️ Building XGBoost Model for Demand Forecasting
+*(Talep Tahmini İçin XGBoost Modeli Kurma)*
+
+Zaman serisi tahminini bir **Denetimli Öğrenme** (*Supervised Learning*) problemi olarak ele alıyoruz.
+
+### 1. Splitting Data: The Temporal Split
+*(Veriyi Bölme: Zamansal Ayrım)*
+
+Zaman serilerinde rastgele bölme (*random shuffle*) **yapılamaz**. Geleceği geçmişle tahmin etmeliyiz.
+
+* **Training Set:** Geçmiş veriler (örn. 2020-2022).
+* **Testing Set:** En güncel veriler (örn. 2023).
+* **Goal:** Prevent **Data Leakage** (*Hedef: Veri sızıntısını önlemek*).
+
+### 2. Implementing XGBoost
+*(XGBoost Uygulaması)*
+
+Modeli kurarken, özellik mühendisliği aşamasında ürettiğimiz `lag` ve `rolling` özelliklerini girdi olarak kullanırız.
+
+```python
+import xgboost as xgb
+
+# Define the model with key hyperparameters
+model = xgb.XGBRegressor(
+    n_estimators=1000,     # Number of trees (Ağaç sayısı)
+    learning_rate=0.01,    # Step size shrinkage (Öğrenme oranı)
+    max_depth=5,           # Depth of trees (Ağaç derinliği)
+    subsample=0.8,         # Row sampling (Satır örnekleme)
+    colsample_bytree=0.8,  # Feature sampling (Özellik örnekleme)
+    objective='reg:squarederror' # Loss function (Kayıp fonksiyonu)
+)
+
+# Train the model
+model.fit(X_train, y_train,
+          eval_set=[(X_test, y_test)],
+          early_stopping_rounds=50, # Stop if validation score doesn't improve
+          verbose=False)
  
+```
+
+## 3. Performansı Görselleştirme: Gerçek ve Tahmin (Visualizing Performance: Actual vs Predicted)
+
+Modeli test seti üzerinde değerlendirdiğimizde genellikle şu davranışı görürüz:
+
+* **Başarı (Success):** Model haftalık zirve ve dip zamanlamalarını oldukça iyi takip eder; 7 günlük ritmi yakalar (The model tracks the timing of weekly peaks and troughs fairly well).
+* **Kısıt (Limitation):** Genlikler genellikle sapar. Model uç değerleri/sıçramaları yumuşatma eğilimindedir (The amplitudes are often off. It tends to smooth out extreme spikes).
+* **Sebep (Reason):** Ağaç tabanlı modeller (Tree-based models), eğitimde gördüklerinin ötesindeki değerleri tahmin edemez (cannot extrapolate). Bir yaprak düğümün ortalamasını tahmin ederler (They predict the average of a leaf node).
+
+## 4. Değerlendirme Metrikleri: MSE ve MAE (Evaluation Metrics: MSE vs MAE)
+
+### Optimizasyon Metriği - Eğitim (Optimization Metric - Training)
+`objective='reg:squarederror'`
+
+* MSE/RMSE'yi minimize eder.
+* Büyük hataları, kareli terim nedeniyle ağır cezalandırır (Penalizes large errors heavily).
+* Gradyan İnişi (Gradient Descent) için türevi alınabilir (Differentiable).
+
+### Raporlama Metriği - Değerlendirme (Reporting Metric - Evaluation)
+**MAE (Ortalama Mutlak Hata / Mean Absolute Error)**
+
+* Performansı paydaşlara (stakeholders) raporlamak için kullanılır.
+* Hatayı yorumlanabilir birimlerle ifade eder; örneğin, *"Ortalama ±50 birim sapıyoruz"* (Expresses error in interpretable units).
+
+---
+
+## 🔑 Temel Çıkarımlar (Key Takeaways)
+
+* **Özellik Mühendisliği Kraldır (Feature Engineering is King):** XGBoost "zamanı" göremez. Zamansal bağımlılıkları (temporal dependencies) anlamak için tamamen oluşturduğumuz gecikme (lag) ve yuvarlanan (rolling) özelliklere güvenir.
+* **Esneklik (Flexibility):** Doğrusal olmayan ilişkileri (non-linear relationships) ve etkileşimleri doğrusal (linear) ARIMA modellerinden daha iyi yönetir.
+* **Ekstrapolasyon Uyarısı (Extrapolation Warning):** XGBoost, eğitim verisi aralığının çok üzerine çıkan veya altına inen bir trendi tahmin edemez; doğrusal regresyonun aksine (cannot predict a trend that goes significantly higher/lower than the training data range).
+
+
+# Quiz 4 Solution: XGBoost Fundamentals
+
+Aşağıda XGBoost ile ilgili temel kavramları içeren Quiz 4'ün çözümleri ve teknik açıklamaları yer almaktadır.
+
+---
+
+### 1. What does XGBoost stand for?
+**(XGBoost neyin kısaltmasıdır?)**
+
+* [ ] A - Extended Gradient Boosting
+* [x] **B - Extreme Gradient Boosting**
+* [ ] C - Experimental Gradient Boosting
+* [ ] D - Exponential Gradient Boosting
+
+> **Technical Note:** "Extreme" refers to the computational efficiency and engineering goal of pushing the limits of computing resources for boosted tree algorithms.
+> *(Teknik Not: "Extreme", artırılmış ağaç algoritmaları için hesaplama kaynaklarının sınırlarını zorlayan mühendislik hedefine ve verimliliğe atıfta bulunur.)*
+
+### 2. What is the primary function of boosting in XGBoost?
+**(XGBoost'ta boosting'in birincil işlevi nedir?)**
+
+* [ ] A - Creating a single deep tree to model the data
+* [ ] B - Removing irrelevant features from the dataset
+* [x] **C - Correcting errors made by previous trees in the model**
+* [ ] D - Optimizing the training process by skipping some data points
+
+> **Technical Note:** Boosting is a sequential ensemble technique where new trees are added to predict and correct the residuals (errors) of prior trees.
+> *(Teknik Not: Boosting, yeni ağaçların önceki ağaçların kalıntılarını [hatalarını] tahmin etmek ve düzeltmek için eklendiği sıralı bir topluluk tekniğidir.)*
+
+### 3. Why is XGBoost popular for machine learning tasks?
+**(XGBoost makine öğrenimi görevleri için neden popülerdir?)**
+
+* [ ] A - It automatically performs feature scaling and normalization
+* [ ] B - It only works with structured/tabular data
+* [ ] C - It is a deep learning algorithm optimized for unstructured data
+* [x] **D - It provides accurate predictions, is fast, and handles missing data well**
+
+> **Technical Note:** Its popularity stems from system optimization (speed), regularization (accuracy), and sparsity-aware algorithms (handling missing data natively).
+> *(Teknik Not: Popülaritesi; sistem optimizasyonu [hız], düzenlileştirme [doğruluk] ve seyrekliğe duyarlı algoritmalarından [kayıp veriyi doğal olarak işleme] kaynaklanır.)*
+
+### 4. What type of data is XGBoost best suited for?
+**(XGBoost hangi veri türü için en uygundur?)**
+
+* [ ] A - Image data
+* [x] **B - Structured/tabular data**
+* [ ] C - Text data
+* [ ] D - Time-series data only
+
+> **Technical Note:** Tree-based models excel at splitting heterogeneous features found in tabular data, whereas Deep Learning is better for unstructured data like images.
+> *(Teknik Not: Ağaç tabanlı modeller, tablosal verilerdeki heterojen özellikleri bölmede mükemmeldir; Derin Öğrenme ise görüntüler gibi yapılandırılmamış verilerde daha iyidir.)*
+
+### 5. How does XGBoost make its final predictions?
+**(XGBoost son tahminlerini nasıl yapar?)**
+
+* [ ] A - By selecting the best-performing single tree
+* [ ] B - By averaging the predictions from all trees
+* [x] **C - By combining the results of all trees, with each tree correcting the previous one**
+* [ ] D - By using only the last tree in the boosting process
+
+> **Technical Note:** It uses an additive strategy where the final prediction is the sum of outputs from all trees ($\sum f_k(x)$).
+> *(Teknik Not: Son tahminin tüm ağaçların çıktılarının toplamı olduğu toplamsal [additive] bir strateji kullanır.)*
+
+### 6. Which of the following is a key advantage of XGBoost?
+**(Aşağıdakilerden hangisi XGBoost'un temel bir avantajıdır?)**
+
+* [ ] A - It requires no feature engineering to produce accurate results
+* [x] **B - It can handle missing data naturally without preprocessing**
+* [ ] C - It is only used for classification tasks
+* [ ] D - It does not require regularization to control overfitting
+
+> **Technical Note:** XGBoost employs a "Sparsity-aware Split Finding" algorithm that learns the optimal default direction for missing values during training.
+> *(Teknik Not: XGBoost, eğitim sırasında kayıp değerler için en uygun varsayılan yönü öğrenen "Seyrekliğe Duyarlı Bölme Bulma" algoritmasını kullanır.)*
+
+### 7. Which of the following describes feature importance in XGBoost?
+**(Aşağıdakilerden hangisi XGBoost'ta özellik önemini tanımlar?)**
+
+* [ ] A - It automatically removes unimportant features from the dataset
+* [x] **B - It identifies the most significant features in driving predictions**
+* [ ] C - It assigns equal importance to all features in the dataset
+* [ ] D - It requires manual calculation by the data scientist
+
+> **Technical Note:** Importance is calculated based on metrics like "Gain" (how much a feature improves the tree's accuracy) or "Cover" (number of samples affected).
+> *(Teknik Not: Önem; "Kazanç" [bir özelliğin ağacın doğruluğunu ne kadar artırdığı] veya "Kapsama" [etkilenen örnek sayısı] gibi metriklere göre hesaplanır.)*
 
