@@ -2073,16 +2073,8 @@ Bir LSTM'in hafızasında (Cell State) halihazırda mevsimsellik ("Hafta sonlar�
 
 Aşağıdaki şema, bilginin LSTM hücresi içindeki akışını özetler:
 
-```mermaid
-graph LR
-    A[Old Cell State] --> B{Forget Gate}
-    B -- Remove Irrelevant Info --> C((+))
-    D[New Info / Input] --> E{Input Gate}
-    E -- Decide Importance --> C
-    C -- Add Selected Info --> F[📦 Updated Cell State]
-    F --> G{Output Gate}
-    G -- Filter for Today --> H[Hidden Output h_t]
-    H --> I[Next Step / Prediction]
+<img width="700" height="350" alt="image" src="https://github.com/user-attachments/assets/e8dccd36-58c8-4d4c-b3fd-8a4c0d62b97b" />
+
 
 ## 🎯 Expert Summary: The Power of Gates
 **(Uzman Özeti: Kapıların Gücü)**
@@ -2112,6 +2104,8 @@ LSTM, kısa vadeli oynaklık (volatility) ile uzun vadeli trendlerin iç içe ge
 * ⚡ **Energy Consumption (Enerji Tüketimi):**
     * *Short-term:* Anlık yük değişimleri ve talep artışları (Instant load changes).
     * *Long-term:* Haftalık ve mevsimsel kullanım kalıpları (Weekly usage patterns).
+ 
+    * 
 
 # 🔄 Summary: End-to-End ML/DL Workflow for Time Series
 **(Özet: Zaman Serileri için Uçtan Uca ML/DL İş Akışı)**
@@ -2212,7 +2206,7 @@ Model canlıya alındığında iş bitmez.
 
 ---
 
-### 📌 Expert Advice
+### 📌 Expert Advice (Uzman Tavsiyesi)
 
 > Eğer zaman serileriniz **kısa, temiz ve düşük gürültülü** (short, clean, low-noise) ise, karmaşık modellere girmeden klasik **ARIMA/SARIMA** ile başlayın.
 >
