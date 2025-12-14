@@ -293,7 +293,7 @@ Aşağıdaki tablo, görsel analiz ve istatistiksel test sonuçlarına göre `d`
 # 📉 Reading a PACF Plot: Choosing the AR Order (`p`)
 *(PACF Grafiğini Okuma: AR Derecesi `p` Seçimi)*
 
-ARIMA modelinin **AR (AutoRegressive)** bileşeni olan `p` parametresini belirlemek için birincil aracımız **Partial Autocorrelation Function (PACF)** grafiğidir.
+ARIMA modelinin **AR (AutoRegressive)** bileşeni olan `p` parametresini belirlemek için birincil aracımız **Partial Autocorrelation Function (PACF)** grafiğidir. 
 
 ### 🧐 What is PACF?
 
