@@ -288,3 +288,246 @@ Aşağıdaki tablo, görsel analiz ve istatistiksel test sonuçlarına göre `d`
 ---
 
 > ⚠️ **Warning (Uyarı):** **Over-differencing** (*Aşırı Fark Alma*) can introduce extra **noise** (*gürültü*) and hurt your **forecast** (*tahmin*). Always balance **visual evidence** (*görsel kanıt*) with **statistical tests** (*istatistiksel testler*).
+
+
+# 📉 Reading a PACF Plot: Choosing the AR Order (`p`)
+*(PACF Grafiğini Okuma: AR Derecesi `p` Seçimi)*
+
+ARIMA modelinin **AR (AutoRegressive)** bileşeni olan `p` parametresini belirlemek için birincil aracımız **Partial Autocorrelation Function (PACF)** grafiğidir.
+
+### 🧐 What is PACF?
+
+
+ACF (Autocorrelation Function), bir gecikmenin (*lag*) hem doğrudan hem de dolaylı etkilerini gösterirken; **PACF**, aradaki gecikmelerin etkisini kaldırdıktan sonra, sadece o gecikmenin şimdiki zaman üzerindeki **saf ve doğrudan etkisini** (*pure/direct effect*) ölçer.
+
+> 💡 **Rule of Thumb:** AR (`p`) derecesini bulmak için **PACF** grafiğine, MA (`q`) derecesini bulmak için **ACF** grafiğine bakılır.
+
+---
+
+### 📊 How to Interpret the PACF Plot
+
+PACF grafiğindeki her bir çubuk (*bar*), ilgili gecikmenin korelasyon katsayısını temsil eder. Arka plandaki gölgeli alan (genellikle mavi), **95% Confidence Interval** (Güven Aralığı)'dır.
+
+
+| Plot Feature (Grafik Özelliği) | Interpretation (Yorumlama) |
+| :--- | :--- |
+| **Tall bar outside the grey band**<br>*(Gri bandın dışındaki uzun çubuk)* | **Statistically Significant:** There is a significant, direct correlation at that lag.<br>*(İstatistiksel Olarak Anlamlı: O gecikmede anlamlı ve doğrudan bir etki vardır.)* |
+| **Bars drop inside the band and stay there**<br>*(Çubuklar bandın içine düşüyor ve orada kalıyor)* | **Cut-off Point:** Useful memory ends here. This sharp drop indicates the order of the AR process.<br>*(Kesilme Noktası: Yararlı hafıza burada biter. Bu keskin düşüş AR sürecinin derecesini gösterir.)* |
+| **First bar only**<br>*(Sadece birinci çubuk)* | **Classic AR(1):** Common in many time series. Only yesterday influences today.<br>*(Klasik AR(1): Birçok zaman serisinde yaygındır. Sadece dün bugünü etkiler.)* |
+| **Several bars then sharp drop**<br>*(Birkaç çubuk sonra keskin düşüş)* | **AR(p):** Set `p` equal to the last significant lag before the drop.<br>*(AR(p): `p` değerini, düşüşten önceki son anlamlı gecikmeye eşitleyin.)* |
+
+---
+
+### 🛠️ Workflow: Choosing the AR Order `p`
+*(İş Akışı: AR Derecesi `p` Seçimi)*
+
+1.  **Stationarity Check:** Ensure the series is stationary. Difference (`d`) if needed.
+    *(Durgunluk Kontrolü: Serinin durgun olduğundan emin olun. Gerekirse fark alın.)*
+2.  **Plot PACF:** Use `plot_pacf(series, lags=30)` from `statsmodels`.
+    *(PACF Çizimi: `statsmodels` kütüphanesini kullanın.)*
+3.  **Identify Cut-off:** Find the **last bar** that sticks out significantly above the confidence interval.
+    *(Kesilme Noktasını Belirle: Güven aralığının dışına çıkan son çubuğu bulun.)*
+    * That lag number = **Candidate `p`** (*Aday p*).
+4.  **Validate:** Don't rely solely on the plot. Compare models using **AIC/BIC** scores or **Cross-Validation**.
+    *(Doğrulama: Sadece grafiğe güvenmeyin. AIC/BIC skorları veya Çapraz Doğrulama ile modelleri karşılaştırın.)*
+
+> **🔍 Technical Detail:** The Confidence Interval is typically calculated as $\pm 1.96 / \sqrt{T}$ where $T$ is the number of observations. Bars within this range are considered **White Noise** (statistical noise).
+
+---
+
+### ❓ Common Questions & Troubleshooting
+
+| Question | Quick Answer & Technical Reason  |
+| :--- | :--- |
+| **Why not pick a huge `p`?**<br>*(Neden çok büyük bir `p` seçmiyoruz?)* | **Overfitting Risk:** Adding too many lags captures random noise, not the signal. It increases model complexity without improving predictive power (penalized by AIC/BIC).<br>*(Aşırı Öğrenme Riski: Çok fazla gecikme sinyali değil gürültüyü yakalar. Tahmin gücünü artırmadan model karmaşıklığını yükseltir.)* |
+| **What if I see no bars above the band?**<br>*(Ya bandın üzerinde hiç çubuk görmezsem?)* | **White Noise or Over-differencing:** The series might differenced too much (`d` is too high), or it holds no predictive pattern. Try `p=0` or reduce `d`.<br>*(Beyaz Gürültü veya Aşırı Fark Alma: Seri gereğinden fazla fark alınmış olabilir veya tahmin edilebilir bir desen içermiyordur.)* |
+| **What if bars never drop (slow decay)?**<br>*(Ya çubuklar hiç düşmezse / yavaş azalırsa?)* | **Non-Stationarity:** The series is likely still non-stationary. Re-examine **differencing** (`d`) or check for **seasonality**.<br>*(Durgun Olmama: Seri muhtemelen hala durgun değildir. Fark alma işlemini tekrar inceleyin veya mevsimsellik kontrolü yapın.)* |
+
+# 📉 Choosing the MA Order (`q`) with ACF
+*(ACF ile MA Derecesi `q` Seçimi)*
+
+ARIMA modelinin **MA (Moving Average - Hareketli Ortalama)** bileşeni olan `q` parametresini belirlemek için birincil aracımız **Autocorrelation Function (ACF)** grafiğidir.
+
+### 🧐 What is `q` in ARIMA?
+*(ARIMA'da `q` Nedir?)*
+
+`p` parametresi geçmiş *değerlere* (satış rakamlarına) bakarken, **`q` parametresi geçmiş tahmin hatalarına (forecast errors/residuals)** bakar.
+MA modelleri, serideki şokların veya hataların zaman içinde nasıl yayıldığını modeller.
+
+> **Key Takeaway:** ACF answers "How many past mistakes still impact today?"
+> *(Temel Çıkarım: ACF, "Geçmişteki kaç hata bugünü hala etkiliyor?" sorusuna cevap verir.)*
+
+---
+
+### 📊 How to Read an ACF Plot
+*(ACF Grafiği Nasıl Okunur)*
+
+MA (`q`) derecesini seçerken, ACF grafiğinde "Cut-off" (Kesilme) noktasına bakarız. PACF'in aksine, burada **ACF** grafiğindeki ani düşüşler MA derecesini işaret eder.
+
+
+
+#### 🛠️ Step-by-Step Workflow (Adım Adım İş Akışı)
+
+1.  **Stationarity First:** Ensure the series is stationary (`d` is fixed).
+    *(Önce Durgunluk: Serinin durgun olduğundan emin olun.)*
+2.  **Plot ACF:** Use `plot_acf(series)` from `statsmodels`.
+    *(ACF Çizimi: `statsmodels` üzerinden ACF grafiğini çizin.)*
+3.  **Identify Cut-off:** Look for the lag where bars drop into the **grey band** (Confidence Interval) and stay there.
+    *(Kesilmeyi Belirle: Çubukların gri banda [Güven Aralığına] düştüğü ve orada kaldığı gecikmeyi bulun.)*
+4.  **Set `q`:** The last significant lag before the drop is your candidate `q`.
+    *(q'yu Ayarla: Düşüşten önceki son anlamlı gecikme, aday q değerinizdir.)*
+
+---
+
+### 🔍 Interpreting ACF Signatures
+*(ACF İmzalarını Yorumlama)*
+
+| Plot Pattern (Grafik Deseni) | Model Implication (Model Çıkarımı) |
+| :--- | :--- |
+| **Sharp Cut-off after Lag `q`**<br>*(Gecikme `q`'dan sonra keskin kesilme)* | **MA(`q`) Candidate:** Strong evidence for a Moving Average model of order `q`.<br>*(MA(q) Adayı: q derecesinden Hareketli Ortalama modeli için güçlü kanıt.)* |
+| **Gradual Decay (Sine Wave / Exponential)**<br>*(Kademeli Azalma / Sinüs Dalgası)* | **AR(`p`) Process:** Typically indicates an Autoregressive process. Look at **PACF** instead to find `p`.<br>*(AR(p) Süreci: Genellikle Otokorelasyon sürecini gösterir. p'yi bulmak için PACF'e bakın.)* |
+| **Spikes at Regular Intervals (s, 2s...)**<br>*(Düzenli Aralıklarda Sıçramalar)* | **Seasonality:** Indicates seasonal patterns (e.g., lag 7, 14, 21). Needs SARIMA.<br>*(Mevsimsellik: Mevsimsel kalıpları gösterir. SARIMA gerektirir.)* |
+
+> 💡 **Technical Note:** For a pure MA(q) process:
+> * **ACF:** Cuts off after lag `q`. (*Gecikme q'dan sonra kesilir.*)
+> * **PACF:** Decays gradually (tails off). (*Kademeli olarak azalır.*)
+
+---
+
+### ⚠️ Common Pitfalls & Fixes
+*(Yaygın Hatalar ve Çözümler)*
+
+Model kurarken karşılaşabileceğiniz yaygın ACF desenleri ve teknik çözümleri:
+
+| Pitfall (Tuzak) | Symptom on ACF (ACF Belirtisi) | Technical Fix (Teknik Çözüm) |
+| :--- | :--- | :--- |
+| **Over-differencing**<br>*(Aşırı Fark Alma)* | **No significant bars:** First lag might even be significantly negative (approx -0.5).<br>*(Anlamlı çubuk yok: İlk gecikme negatif ve anlamsız olabilir.)* | **Try smaller `d`:** You likely differenced a stationary series unnecessarily. Revert to `d=0` or `d-1`.<br>*(Daha küçük `d` dene: Muhtemelen durgun bir serinin gereksiz yere farkını aldınız.)* |
+| **Under-differencing**<br>*(Yetersiz Fark Alma)* | **Very slow decay:** Bars stay high and positive for many lags, decreasing linearly.<br>*(Çok yavaş azalma: Çubuklar birçok gecikme boyunca yüksek ve pozitif kalır, doğrusal azalır.)* | **Increase `d`:** The series is still non-stationary (Unit Root present). Take an additional difference.<br>*(d'yi Artır: Seri hala durgun değil. Bir fark daha alın.)* |
+| **Seasonality Present**<br>*(Mevsimsellik Var)* | **Periodic Spikes:** Significant correlations appearing at specific lags (e.g., 7, 14 for weekly data).<br>*(Periyodik Sıçramalar: Belirli gecikmelerde [haftalık veride 7, 14 gibi] anlamlı korelasyonlar.)* | **Seasonal Model:** Consider **SARIMA** (adding Seasonal MA term `Q`) or apply **Seasonal Differencing** (`D=1`, lag=7).<br>*(Mevsimsel Model: SARIMA düşünün veya Mevsimsel Fark Alma uygulayın.)* |
+
+---
+
+### ✅ Summary Strategy: Choosing `p` and `q`
+*(Özet Strateji: p ve q Seçimi)*
+
+| Parameter | Plot to Watch | Pattern to Look For |
+| :--- | :--- | :--- |
+| **AR (`p`)** | **PACF** | **Cut-off:** Last significant spike determines `p`. |
+| **MA (`q`)** | **ACF** | **Cut-off:** Last significant spike determines `q`. |
+
+> **Final Check:** After choosing `p` and `q`, always validate with **Information Criteria (AIC/BIC)** and check the residuals of your model.
+> *(Son Kontrol: Seçimden sonra her zaman Bilgi Kriterleri [AIC/BIC] ile doğrulayın ve model hatalarını [residuals] kontrol edin.)*
+
+
+# 📌 Summary & ARIMA Workflow
+*(Özet ve ARIMA İş Akışı)*
+
+### 🚀 Why ARIMA?
+*(Neden ARIMA?)*
+
+**ARIMA** (*AutoRegressive Integrated Moving Average*), daha ağır makine öğrenimi yaklaşımlarına (*Machine Learning approaches*) dalmadan önce başvurmanız gereken, **kompakt**, **şeffaf** ve **istatistiksel olarak titiz** bir tahmin modelidir.
+
+> **⚠️ Limitation (Kısıt):**
+> ARIMA, by design, handles **trend** and short-term **autocorrelation** but assumes your series has **no built-in seasonality**. There is no term in the definition explicitly modeling repeating cycles.
+> *(ARIMA, tasarımı gereği trendi ve kısa vadeli otokorelasyonu yönetir ancak serinizin yerleşik bir mevsimselliği olmadığını varsayar. Tanımında tekrarlayan döngüleri modelleyen açık bir terim yoktur.)*
+>
+> 💡 **Solution:** If your data shows strong weekly or annual patterns, upgrade to **SARIMA**, which adds a "Seasonal" component.
+
+---
+
+### ⚙️ The Three Pillars: p, d, q
+*(Üç Temel Direk: p, d, q)*
+
+ARIMA requires three hyperparameters that define its structure:
+
+| Parameter | Component | Description (Açıklama) |
+| :--- | :--- | :--- |
+| **p** | **AutoRegression (AR)**<br>*(Oto-Regresyon)* | **Past Values:** It looks back at the last `p` days of sales to detect patterns.<br>*(Geçmiş Değerler: Kalıpları tespit etmek için son p günün satışlarına bakar.)* |
+| **d** | **Integration (I)**<br>*(Entegrasyon/Fark Alma)* | **Stationarity:** It removes smooth up-or-down trends by **differencing** the data `d` times.<br>*(Durgunluk: Verinin d kez farkını alarak yukarı veya aşağı yönlü trendleri kaldırır.)* |
+| **q** | **Moving Average (MA)**<br>*(Hareketli Ortalama)* | **Past Errors:** It learns from the last `q` days of **forecast errors** to correct its predictions.<br>*(Geçmiş Hatalar: Tahminlerini düzeltmek için son q günün tahmin hatalarından öğrenir.)* |
+
+---
+
+### 🛠️ The Professional Workflow
+*(Profesyonel İş Akışı)*
+
+Follow this step-by-step pipeline to build a robust ARIMA model.
+
+#### 1. Exploratory Analysis
+*(Keşifçi Analiz)*
+* **Visualize:** Plot the raw series, moving average, and variance.
+* **Check Trend:** Is there an obvious upward/downward drift?
+* **Test Stationarity:** Run the **ADF Test** (*Augmented Dickey-Fuller*).
+
+#### 2. Differencing (Parameter `d`)
+*(Fark Alma)*
+* Difference the series (`d` times) until it looks flat (constant mean).
+* **Verification:** Ensure ADF p-value < 0.05.
+* *Note:* Usually `d=1` is sufficient. `d=2` is rare.
+
+#### 3. Identification (Parameters `p` & `q`)
+*(Tanımlama)*
+Plot **ACF** and **PACF** charts on the **differenced** series:
+* **PACF Cut-off:** Suggests the AR order (**p**).
+* **ACF Cut-off:** Suggests the MA order (**q**).
+
+#### 4. Model Fitting
+*(Model Eğitimi)*
+Fit the model using `statsmodels`.
+
+```python
+from statsmodels.tsa.arima.model import ARIMA
+
+# Define the model with identified orders
+# order = (p, d, q)
+model = ARIMA(series, order=(p, d, q))
+
+# Train the model
+results = model.fit()
+
+# View statistical summary
+print(results.summary())
+
+```
+
+### 5. 🩺 Diagnostics: Residual Analysis
+*(Tanılama: Artık Analizi)*
+
+This is a **critically important step** (*kritik derecede önemli bir adım*). We must check if the **residuals** (*hatalar/artıklar*) resemble **White Noise** (*Beyaz Gürültü*).
+
+**Checklist for Residuals:**
+*(Artıklar için Kontrol Listesi:)*
+
+* **Mean** (*Ortalama*): Should be close to **0**.
+    *(0'a yakın olmalıdır.)*
+* **Variance** (*Varyans*): Should be **constant**.
+    *(Sabit olmalıdır.)*
+* **No Correlation** (*Korelasyon Yok*): The **ACF** of residuals should show no significant **spikes**.
+    *(Artıkların ACF grafiği anlamlı sivrilmeler göstermemelidir.)*
+* **Test:** Use the **Ljung-Box Test** to statistically confirm residuals are **random**.
+    *(Test: Artıkların rastgele olduğunu istatistiksel olarak doğrulamak için Ljung-Box Testi kullanın.)*
+
+---
+
+### 6. 🔮 Forecast and Evaluate
+*(Tahmin ve Değerlendirme)*
+
+Once the diagnostics pass, we evaluate the model using specific metrics.
+
+#### 📉 Model Selection Metric: AIC
+*(Model Seçim Metriği: AIC)*
+
+* **Definition:** **AIC (Akaike Information Criterion)**.
+* **Purpose:** Used for **Model Selection**.
+    *(Model Seçimi için kullanılır.)*
+* **Interpretation:** **Lower is better**. It balances **model fit** vs. **complexity**.
+    *(Daha düşük olması daha iyidir. Model uyumu ile karmaşıklığı dengeler.)*
+
+#### 🎯 Accuracy Metrics: MAE / RMSE
+*(Doğruluk Metrikleri: MAE / RMSE)*
+
+* **Purpose:** Used for **Accuracy**.
+    *(Doğruluk için kullanılır.)*
+* **Interpretation:** Evaluate how close the **predictions** are to **actuals** on a test set.
+    *(Test setindeki tahminlerin gerçek değerlere ne kadar yakın olduğunu ölçer.)*
+
