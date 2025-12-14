@@ -1,6 +1,6 @@
 # 🛠️ Time-Series Analysis Pipeline: EDA, Preprocessing & Feature Engineering
 
-Zaman serisi modellemesinde verinin kalitesi ve hazırlık aşaması, model seçiminden daha kritiktir. Aşağıdaki tablo, ham veriden model girdisine kadar olan süreçte incelenmesi gereken **Sorunları**, **Bileşenleri**, **Çözüm Yöntemlerini** ve **Kullanılan Araçları** detaylandırır.
+Zaman serisi modellemesinde verinin kalitesi ve hazırlık aşaması, model seçiminden daha kritiktir. Aşağıdaki tablo, ham veriden model girdisine kadar olan süreçte incelenmesi gereken **Sorunları**, **Bileşenleri**, **Çözüm Yöntemlerini** ve **Kullanılan Araçları** detaylandırır. 
 
 | Analiz Alanı (Analysis Area) | Sorunlar & Bileşenler (Problems & Components) | Teknik Detay & Önem (Technical Detail & Importance) | Çözüm Yöntemleri (Solution Methods) | Kullanılan Araçlar & Testler (Tools & Tests) |
 | :--- | :--- | :--- | :--- | :--- |
