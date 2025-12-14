@@ -102,3 +102,6 @@ Bu bölüm, Klasik Zaman Serisi Yöntemlerinin (*Classical Time-Series Methods*)
 * **Application:** You only need it when ACF/PACF show repeating **seasonal spikes** (*tekrarlayan mevsimsel sıçramalar*).
 * **The "S" Factor:** While standard ARIMA handles general trends, **SARIMA** is indispensable when "this December" depends heavily on "last December".
     *(Standart ARIMA genel trendleri yönetirken, "bu Aralık" ayının büyük ölçüde "geçen Aralık" ayına bağlı olduğu durumlarda SARIMA vazgeçilmezdir.)*
+
+
+
