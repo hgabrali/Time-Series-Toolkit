@@ -103,4 +103,147 @@ Bu bölümde, büyük veri dosyalarını yönetmek için **"Chunking"** (Parçal
 
 ---
 
-# PART 3:
+# PART 3: # 🔍 EDA for Time-Series Data
+*(Zaman Serisi Verileri için Keşifçi Veri Analizi)*
+
+**EDA (Exploratory Data Analysis)** is a crucial step before applying machine learning models, especially in **time-series forecasting**. We will focus on:
+*(EDA, özellikle zaman serisi tahmininde makine öğrenimi modellerini uygulamadan önce çok önemli bir adımdır. Şunlara odaklanacağız:)*
+
+* 🏗️ **Understanding the Structure:** Understanding the structure of the dataset.
+    *(Veri setinin yapısını anlamak.)*
+* 🧩 **Handling Missing Data:** Handling missing data effectively.
+    *(Eksik verileri etkili bir şekilde ele almak.)*
+* 📈 **Visualizing Trends:** Visualizing sales trends.
+    *(Satış trendlerini görselleştirmek.)*
+* 🔗 **Investigating Relationships:** Investigating relationships among the various features.
+    *(Çeşitli özellikler arasındaki ilişkileri araştırmak.)*
+
+---
+
+## 🛤️ Workflow Steps
+*(İş Akış Adımları)*
+
+These are the steps we will follow:
+*(İzleyeceğimiz adımlar şunlardır:)*
+
+### **Step 1: Checking for Missing Data**
+*(Adım 1: Eksik Veri Kontrolü)*
+Identify gaps in the data (e.g., missing sales records, null values in promotion columns).
+*(Verideki boşlukları belirleme [örn. eksik satış kayıtları, promosyon sütunlarındaki boş değerler].)*
+
+### **Step 2: Handling Outliers**
+*(Adım 2: Aykırı Değerlerin Ele Alınması)*
+Detect and manage extreme values (e.g., negative sales indicating returns, or massive spikes due to earthquakes) that could skew the model.
+*(Modeli saptırabilecek aşırı değerleri [örn. iadeleri gösteren negatif satışlar veya depremlerden kaynaklanan büyük sıçramalar] tespit etme ve yönetme.)*
+
+### **Step 3: Fill Missing Dates with Zero Sales**
+*(Adım 3: Eksik Tarihleri Sıfır Satışla Doldurma)*
+Time-series models require a continuous timeline. Missing rows usually imply no sales occurred, so we impute them with 0.
+*(Zaman serisi modelleri sürekli bir zaman çizelgesi gerektirir. Eksik satırlar genellikle satış olmadığını ima eder, bu yüzden bunları 0 ile doldururuz.)*
+
+### **Step 4: Feature Engineering: Turning a Date into Useful Signals**
+*(Adım 4: Özellik Mühendisliği: Bir Tarihi Faydalı Sinyallere Dönüştürme)*
+Extract components like "Day of Week", "Month", "Year", and "Is Weekend" from the raw date object to help the model learn cyclical patterns.
+*(Modelin döngüsel kalıpları öğrenmesine yardımcı olmak için ham tarih nesnesinden "Haftanın Günü", "Ay", "Yıl" ve "Hafta Sonu mu" gibi bileşenleri çıkarma.)*
+
+### **Step 5: Visualizing Time-Series Data**
+*(Adım 5: Zaman Serisi Verilerini Görselleştirme)*
+Plot sales over time to spot trends, seasonality, and potential structural breaks.
+*(Trendleri, mevsimselliği ve potansiyel yapısal kırılmaları tespit etmek için zaman içindeki satışları grafiğe dökme.)*
+
+### **Step 6: Examining the Impact of Holidays**
+*(Adım 6: Tatillerin Etkisini İnceleme)*
+Analyze how specific events (National holidays, transferred days, bridges) correlate with sales spikes or drops.
+*(Belirli olayların [Ulusal tatiller, aktarılan günler, köprüler] satış artışları veya düşüşleriyle nasıl ilişkili olduğunu analiz etme.)*
+
+### **Step 7: Analyzing Perishable Items**
+*(Adım 7: Bozulabilir Ürünleri Analiz Etme)*
+Investigate if perishable goods (weighted higher in scoring) show different sales patterns compared to non-perishables.
+*(Bozulabilir malların [puanlamada ağırlığı daha yüksek olan], bozulmayanlara kıyasla farklı satış modelleri gösterip göstermediğini araştırma.)*
+
+---
+---
+
+# 🕰️ Comprehensive Guide to Time-Series Modelling
+*(Zaman Serisi Modelleme Kapsamlı Rehberi)*
+
+Bu doküman, Zaman Serisi Tahmini (*Time-Series Forecasting*) projelerinde dikkate alınması gereken temel bileşenleri, analiz yöntemlerini ve modelleme stratejilerini karşılaştırmalı bir şekilde sunar.
+
+---
+
+## 1. 🏗️ Preprocessing & Structural Analysis
+*(Ön İşleme ve Yapısal Analiz)*
+
+Modellemeye geçmeden önce zaman serisinin karakteristiğini anlamak ve veriyi matematiksel olarak modele hazırlamak zorunludur.
+
+| Bileşen (Component) | Açıklama (Description) | Teknikler & Testler (Techniques & Tests) |
+| :--- | :--- | :--- |
+| **Stationarity**<br>*(Durgunluk)* | Serinin istatistiksel özelliklerinin (ortalama, varyans) zamanla değişmemesi durumudur. Çoğu klasik model (ARIMA vb.) durgunluk gerektirir. | • **ADF Test (Augmented Dickey-Fuller):** Birim kök (*unit root*) varlığını test eder.<br>• **KPSS Test:** Serinin trend durağan olup olmadığını test eder.<br>• **Differencing (Fark Alma):** Durgunlaştırmak için $y_t - y_{t-1}$ işlemi. |
+| **Seasonality & Trend**<br>*(Mevsimsellik ve Trend)* | Verideki uzun vadeli artış/azalış (Trend) ve belirli periyotlarla tekrar eden kalıplar (Mevsimsellik). | • **Decomposition (Ayrıştırma):** Additive (Toplamsal) veya Multiplicative (Çarpımsal) ayrıştırma.<br>• **STL Decomposition:** Mevsimsellik ve Trendi Loess kullanarak ayırma. |
+| **Autocorrelation**<br>*(Otokorelasyon)* | Bir gözlemin geçmiş gözlemlerle olan ilişkisi. | • **ACF (Autocorrelation Function):** Doğrudan ve dolaylı geçmiş ilişkiler.<br>• **PACF (Partial Autocorrelation Function):** Ara gecikmelerin etkisini kaldırarak saf ilişki. |
+| **Missing Values**<br>*(Eksik Değerler)* | Zaman serisinde boşluklar kabul edilemez. | • **Forward/Backward Fill:** Önceki/sonraki değerle doldurma.<br>• **Interpolation:** Lineer veya zamana bağlı enterpolasyon.<br>• **Imputation:** Ortalama veya 0 ile doldurma (satış yoksa). |
+
+---
+
+## 2. 🛠️ Feature Engineering Strategies
+*(Özellik Mühendisliği Stratejileri)*
+
+Zaman serisi verisini Makine Öğrenmesi (*Machine Learning*) modellerine (örn. XGBoost, Random Forest) sokabilmek için "zamanı" özelliklere dönüştürmek gerekir.
+
+| Özellik Türü (Feature Type) | Yöntem (Method) | Neden Kullanılır? (Why Use It?) |
+| :--- | :--- | :--- |
+| **Lag Features**<br>*(Gecikmeli Özellikler)* | $t-1, t-7, t-30$ gibi geçmiş değerleri yeni sütun olarak eklemek. | Modelin otokorelasyonu (*autocorrelation*) öğrenmesini sağlar. "Bugünün satışı dünkü satışa benzer" mantığı. |
+| **Rolling Window Statistics**<br>*(Hareketli Pencere İstatistikleri)* | Son 7 günün ortalaması, standart sapması, min/max değerleri. | Gürültüyü azaltır (*smoothing*) ve trend/momentum bilgisini yakalar. |
+| **Date-Time Components**<br>*(Tarih-Zaman Bileşenleri)* | Ay, Yıl, Haftanın Günü, Yılın Günü, Hafta Sonu mu? | Modelin döngüsel (*cyclical*) ve takvimsel etkileri öğrenmesini sağlar. |
+| **Cyclical Encoding**<br>*(Döngüsel Kodlama)* | Ay ve gün bilgisini Sinüs/Kosinüs fonksiyonlarına dönüştürmek. | Aralık (12) ile Ocak (1) ayının birbirine yakın olduğunu modele matematiksel olarak anlatır. |
+| **Exogenous Variables**<br>*(Dışsal Değişkenler)* | Tatiller, Petrol Fiyatları, Hava Durumu, Promosyonlar. | Tahmin gücünü artıran dış faktörleri dahil eder. |
+
+---
+
+## 3. 🤖 Modelling Approaches: Comparative Table
+*(Modelleme Yaklaşımları: Karşılaştırmalı Tablo)*
+
+Hangi modelin seçileceği veri boyutuna, karmaşıklığına ve iş ihtiyacına bağlıdır.
+
+| Yaklaşım (Approach) | Modeller (Models) | Avantajlar (Pros) | Dezavantajlar (Cons) | En İyi Kullanım (Best Use Case) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Statistical (Classical)**<br>*(İstatistiksel/Klasik)* | • ARIMA / SARIMA<br>• ETS (Exponential Smoothing)<br>• Holt-Winters | • Az veriyle iyi çalışır.<br>• Yorumlanabilirliği (*interpretability*) yüksektir.<br>• İstatistiksel özellikleri (trend, mevsimsellik) doğrudan modeller. | • Çoklu dışsal değişkenleri (*multivariate*) yönetmek zordur.<br>• Doğrusal olmayan (*non-linear*) ilişkileri yakalayamaz.<br>• Büyük veride yavaştır. | Tek değişkenli, kısa vadeli, net trendi olan veriler. |
+| **Machine Learning (Tree-Based)**<br>*(Makine Öğrenmesi / Ağaç Tabanlı)* | • XGBoost<br>• LightGBM<br>• Random Forest<br>• CatBoost | • Doğrusal olmayan karmaşık ilişkileri yakalar.<br>• Dışsal değişkenleri (promosyon, tatil) mükemmel yönetir.<br>• Büyük veride ölçeklenebilir (*scalable*). | • Trendi "extrapolate" edemez (görmediği yüksek değerleri tahmin edemez).<br>• Çok fazla Özellik Mühendisliği (*Feature Engineering*) gerektirir. | Karmaşık perakende satışları, çoklu değişkenler, büyük veri setleri. (Bizim projemiz için ideal). |
+| **Deep Learning**<br>*(Derin Öğrenme)* | • LSTM / GRU (RNNs)<br>• CNN (1D)<br>• Transformers (TFT, Temporal Fusion) | • Sıralı bağımlılıkları (*sequential dependencies*) ve uzun vadeli hafızayı yönetir.<br>• Ham veriden özellik çıkarabilir.<br>• Çok karmaşık örüntüleri çözer. | • Çok büyük veri ve işlem gücü (*GPU*) gerektirir.<br>• "Black Box" (Kara Kutu) doğası vardır, yorumlaması zordur.<br>• Eğitim süresi uzundur. | Devasa veri setleri, web trafiği, finansal yüksek frekanslı işlemler. |
+| **Modern Hybrid / Automated**<br>*(Modern Hibrit / Otomatik)* | • Prophet (Meta)<br>• NeuralProphet<br>• Auto-ARIMA | • Kullanımı kolaydır (*Out-of-the-box*).<br>• Tatilleri ve değişim noktalarını (*changepoints*) otomatik yönetir. | • Her zaman en yüksek doğruluğu vermeyebilir.<br>• Özelleştirme (*customization*) imkanları bazen sınırlıdır. | Hızlı prototipleme, iş zekası raporlaması, orta ölçekli veriler. |
+
+---
+
+## 4. 📉 Validation & Evaluation Metrics
+*(Doğrulama ve Değerlendirme Metrikleri)*
+
+Zaman serilerinde rastgele bölme (*random split*) yapılamaz; "Geleceği kullanarak geçmişi tahmin etmek" (*Data Leakage*) hatasına düşmemek gerekir.
+
+### A. Validation Strategy (Doğrulama Stratejisi)
+
+* **Time Series Split:** Veriyi zamana göre sıralı tutarak eğitim seti sürekli büyürken test seti ileri kayar.
+* **Sliding Window (Walk-Forward):** Sabit boyutlu bir pencere zaman içinde kaydırılır.
+* **Strict Cut-off:** Örn. 2016 sonuna kadar Train, 2017 başı Validation, 2017 sonu Test.
+
+### B. Key Metrics (Temel Metrikler)
+
+| Metrik (Metric) | Formül Mantığı (Logic) | Artılar/Eksiler (Pros/Cons) |
+| :--- | :--- | :--- |
+| **MAE**<br>*(Mean Absolute Error)* | Hataların mutlak değerlerinin ortalaması. | • Yorumlaması kolaydır (Satış adedi cinsinden hata).<br>• Aykırı değerlere (*outliers*) karşı daha dirençlidir. |
+| **RMSE**<br>*(Root Mean Squared Error)* | Hataların karesinin ortalamasının karekökü. | • Büyük hataları daha çok cezalandırır (*penalizes large errors*).<br>• Aykırı değerlere karşı hassastır. |
+| **MAPE**<br>*(Mean Absolute Percentage Error)* | Hatanın gerçek değere oranının yüzdesi. | • Ölçekten bağımsızdır (*scale-independent*), % olarak ifade edilir.<br>• Gerçek değer 0 ise tanımsız olur (Sonsuz hata). |
+| **WMAPE**<br>*(Weighted MAPE)* | Ağırlıklı ortalama yüzde hatası. | • Hacme göre ağırlıklandırır.<br>• Düşük satışlı ürünlerdeki yüksek yüzdesel hataların genel skoru bozmasını engeller. |
+| **RMSLE**<br>*(Root Mean Squared Logarithmic Error)* | Logaritmik ölçekte RMSE. | • Tahmin edilen değerin gerçek değere "oranı" ile ilgilenir.<br>• Düşük tahmin etmeyi (*under-prediction*) yüksek tahmin etmeye göre daha az cezalandırır (veya tam tersi duruma göre ayarlanabilir). |
+
+---
+
+## 🚀 Summary Checklist for a Successful Project
+*(Başarılı Bir Proje İçin Özet Kontrol Listesi)*
+
+1.  [ ] **EDA:** Veriyi görselleştir, mevsimselliği ve trendi anla.
+2.  [ ] **Preprocessing:** Eksik verileri ve anomaliyi yönet.
+3.  [ ] **Feature Engineering:** Lag, Rolling, Date özelliklerini üret.
+4.  [ ] **Baseline Model:** Basit bir model (örn. Naive Forecast veya ortalama) kurarak referans noktası belirle.
+5.  [ ] **Model Selection:** Veriye uygun algoritmayı (örn. XGBoost) seç.
+6.  [ ] **Validation:** Zamana duyarlı (*time-aware*) bir doğrulama seti kullan.
+7.  [ ] **Evaluation:** İş hedefine uygun metriği (örn. Stok yönetimi için RMSE) seç ve yorumla.
