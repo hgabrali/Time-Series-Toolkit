@@ -1981,3 +1981,239 @@ LSTM'ler, içerdikleri özel "kapı" (gate) mekanizmaları sayesinde hangi bilgi
 
 
 
+# 🧠 Long Short-Term Memory Networks (LSTMs) for Time-Series
+**(Zaman Serileri için Uzun Kısa-Vadeli Hafıza Ağları)**
+
+ <img width="727" height="391" alt="image" src="https://github.com/user-attachments/assets/87415182-6893-444f-abce-092e982be577" />
+
+Zaman serisi tahminciliğinde (Time-Series Forecasting) "altın standart" olarak kabul edilen mimarilerden biri **LSTM (Long Short-Term Memory)** ağlarıdır.
+
+LSTM'ler, standart RNN'lerin (Recurrent Neural Networks) en büyük zaafı olan **Kaybolan Gradyan Problemini (Vanishing Gradient Problem)** çözmek için tasarlanmış özelleşmiş bir mimaridir. Standart RNN'ler zaman adımları arttıkça geçmişi unuturken, LSTM'ler **Kapılar (Gates)** adı verilen mekanizmalar sayesinde bilginin akışını kontrol eder. Bu sayede ağ, uzun diziler boyunca hangi bilginin saklanacağını, hangisinin unutulacağını ve hangisinin bir sonraki adıma aktarılacağını "öğrenir".
+
+
+
+---
+
+## 🚀 Key Benefits for Time-Series
+**(Zaman Serileri İçin Temel Faydalar)**
+
+Neden klasik yöntemler veya basit RNN'ler yerine LSTM kullanmalıyız?
+
+1.  **Handling Long-Term Dependencies (Uzun Vadeli Bağımlılıkları Yönetme):**
+    * Tahminlerin çok eski verilere dayandığı durumlar için idealdir.
+    * *Örnek:* Bir perakendeci için bugünkü satışlar, 12 ay önceki "yıllık mevsimsellikten" (seasonal effects) etkilenebilir. LSTM bu bilgiyi taşıyabilir.
+2.  **Complex & Non-Linear Patterns (Karmaşık ve Doğrusal Olmayan Desenler):**
+    * Verilerdeki karmaşık, çok adımlı ve doğrusal olmayan kalıpları yakalar.
+    * Geleneksel modellerin (ARIMA) veya basit RNN'lerin modellemekte zorlandığı ani değişimleri (shocks) ve rejim değişikliklerini yönetebilir.
+3.  **Variable Length Sequences (Değişken Uzunluklu Diziler):**
+    * Sabit uzunluklu girdilere sıkışıp kalmaz, farklı uzunluktaki tarihsel verileri işleyebilir.
+
+> 📊 **Retail Forecasting Context:** LSTM ağları perakende tahminciliği için özellikle etkilidir çünkü geçmiş verilerden bilgiyi saklayarak hem kısa vadeli dalgalanmaları (haftalık döngüler) hem de uzun vadeli trendleri (yıllık büyüme) aynı anda yakalayabilirler. Promosyonlar, tatiller ve mevsimsellik gibi faktörlerin satış üzerindeki etkisini öğrenirler.
+
+---
+
+## ⚙️ Key Components of LSTMs: The "Mini-Factory"
+**(LSTM'in Temel Bileşenleri: "Mini Fabrika")**
+
+Bir LSTM katmanını, her zaman adımında (time step) neyi saklayacağına, neyi çöpe atacağına ve bir sonraki adıma neyi aktaracağına karar veren bir "mini fabrika" gibi düşünebilirsiniz.
+
+Bu süreci üç küçük karar verici (**Gates/Kapılar**) ve **Cell State (Hücre Durumu)** adı verilen uzun vadeli bir taşıma bandı yönetir.
+
+
+
+### 1. Forget Gate – “What can I safely ignore?”
+**(Unutma Kapısı – "Neyi güvenle görmezden gelebilirim?")**
+
+* **Job (Görevi):** Önceki zaman adımlarından gelen hangi bilginin artık gereksiz olduğuna karar verir ve onu siler.
+* **How (Nasıl):** Son gizli duruma ($h_{t-1}$) ve mevcut girdiye ($x_t$) bakar. Sigmoid fonksiyonu kullanarak 0 ile 1 arasında bir sayı üretir.
+    * `0` → Kesinlikle unut (throw it away).
+    * `1` → Kesinlikle sakla (keep it).
+* **Retail Example:** Model, Şubat ayı satışlarını tahmin ederken geçen yılki "Black Friday" (Efsane Cuma) sıçramasının artık bir gürültü (noise) olduğuna karar verir. Bu bilgiye `0`'a yakın bir değer atar ve hafızadan siler.
+
+### 2. Input Gate – “What new info is worth storing?”
+**(Girdi Kapısı – "Hangi yeni bilgi saklamaya değer?")**
+
+* **Job (Görevi):** Hangi yeni bilginin ağın hafızasına (Cell State) ekleneceğini belirler.
+* **How (Nasıl):** İki aşamalı çalışır:
+    1.  **Sigmoid Filtresi (Sarı):** Hangi değerlerin güncelleneceğine karar verir (0-1 arası önem derecesi).
+    2.  **Tanh Aday Katmanı (Pembe):** Hafızaya eklenebilecek yeni değer vektörünü (adayları) oluşturur (-1 ile 1 arası).
+    * Bu ikisinin çarpımı hafızaya eklenir.
+* **Retail Example:** Model ani bir "3 Günlük İndirim" kampanyası görür. Bunun önemli olduğuna karar verir (Sigmoid $\approx$ 1) ve kampanya etkisini taşıma bandına (belt) yazar.
+
+### 3. Cell State – “Long-term memory lane”
+**(Hücre Durumu – "Uzun vadeli hafıza şeridi")**
+
+* **Job (Görevi):** LSTM'in "gerçek" hafızasıdır. Bilgiyi çok uzun süreler boyunca bozulmadan taşımasını sağlar.
+* **How (Nasıl):** Hücrenin üzerinden dümdüz akan bir taşıma bandı (conveyor belt) gibidir. Sadece "Unutma" ve "Ekleme" adımlarıyla üzerinde küçük değişiklikler yapılır. Matematiksel işlemler lineer olduğu için (çarpma yerine toplama ağırlıklı), gradyanlar kaybolmadan geriye akabilir.
+* **In Retail:** Mevsimsellik bilgisini veya genel trendi (trend), yüzlerce gün boyunca solmadan (without fading) taşıyan yapıdır.
+
+### 4. Output Gate – “What should I reveal right now?”
+**(Çıktı Kapısı – "Şu an neyi açığa çıkarmalıyım?")**
+
+* **Job (Görevi):** Mevcut hafızaya dayanarak, şu anki zaman adımında (t) ne çıktı verileceğini seçer.
+* **How (Nasıl):** Güncellenmiş hücre durumunu (Cell State) alır, bir `tanh` işleminden geçirir ve bunu yeni bir `sigmoid` filtresiyle çarparak bugünün gizli çıktısını ($h_t$) oluşturur. Bu çıktı:
+    1.  Bir sonraki LSTM ünitesine ($t+1$) gider.
+    2.  Gerçek tahmini yapan yoğun katmana (Dense Layer) gider.
+
+#### 🏪 Retail Scenario: Output Gate Logic
+**(Perakende Senaryosu: Çıktı Kapısı Mantığı)**
+
+Bir LSTM'in hafızasında (Cell State) halihazırda mevsimsellik ("Hafta sonları çok satar") ve promosyon ("%20 kupon satışı artırır") bilgisinin saklı olduğunu hayal edin. Takvim **15 Mart Salı**'yı gösterdiğinde, Çıktı Kapısı hafıza vektörünün her parçası için şu soruları sorar:
+
+| Memory Component <br> (Hafıza Bileşeni) | Forget Gate Decision <br> (Unutma Kapısı Durumu) | Output Gate Decision (Today) <br> (Çıktı Kapısı Kararı - Bugün) | Why? <br> (Neden?) |
+| :--- | :--- | :--- | :--- |
+| **Weekend Boost** <br> *(Hafta Sonu Etkisi)* | Kept at 100% <br> *(Cuma geliyor, sakla)* | **0.1 → Reveal only 10%** <br> *(Sadece %10'unu göster)* | Bugün Salı, hafta sonu bilgisi bugünkü satış tahmini için henüz yararlı değil. |
+| **Coupon-Promo Effect** <br> *(Kupon İndirim Etkisi)* | Kept at 60% <br> *(Kupon hala geçerli)* | **0.8 → Reveal most of it** <br> *(Çoğunu göster)* | Kupon Çarşamba bitiyor, yani bugün talebi etkilemeli. |
+| **Christmas Peak** <br> *(Noel Zirvesi)* | Kept at 100% <br> *(Uzun vadeli hafıza)* | **0.0 → Reveal nothing** <br> *(Hiçbir şey gösterme)* | Mart ayındayız; Noel bilgisinin bugünkü tahmini şişirmesine izin verme. |
+
+---
+
+## 🧠 Conceptual Flow: The Conveyor Belt
+**(Kavramsal Akış: Taşıma Bandı)**
+
+Aşağıdaki şema, bilginin LSTM hücresi içindeki akışını özetler:
+
+```mermaid
+graph LR
+    A[Old Cell State] --> B{Forget Gate}
+    B -- Remove Irrelevant Info --> C((+))
+    D[New Info / Input] --> E{Input Gate}
+    E -- Decide Importance --> C
+    C -- Add Selected Info --> F[📦 Updated Cell State]
+    F --> G{Output Gate}
+    G -- Filter for Today --> H[Hidden Output h_t]
+    H --> I[Next Step / Prediction]
+
+## 🎯 Expert Summary: The Power of Gates
+**(Uzman Özeti: Kapıların Gücü)**
+
+> **Core Logic:** Her kapı (gate) eğitim sırasında kendi ağırlıklarını (weights) öğrenir. Bu dinamik yapı sayesinde LSTM, çelişkili gibi görünen görevleri **tek bir model içinde** (all in one model) başarıyla yönetir:
+>
+> 1.  **Forget:** Haftalık gürültüyü ve gereksiz veriyi unutur (Forgetting weekly noise).
+> 2.  **Remember:** Mevsimsel döngüleri ve uzun vadeli trendleri hatırlar (Remembering seasonal cycles).
+> 3.  **React:** Ani gelişen olaylara ve şoklara tepki verir (Reacting to sudden events).
+
+---
+
+## 🏆 Powerhouse Use Cases
+**(Güç Merkezi Kullanım Alanları)**
+
+LSTM, kısa vadeli oynaklık (volatility) ile uzun vadeli trendlerin iç içe geçtiği alanlarda endüstri standardı bir "Güç Merkezi"dir:
+
+* 📈 **Sales Forecasting (Satış Tahmini):**
+    * *Short-term:* Promosyon kaynaklı ani sıçramalar (Promo spikes).
+    * *Long-term:* Noel/Bayram sezonu etkileri (Seasonal effects).
+* 💹 **Stock-Price Moves (Hisse Senedi Hareketleri):**
+    * *Short-term:* Gün içi dalgalanmalar/gürültü (Intraday jitter).
+    * *Long-term:* Makroekonomik trendler ve döngüler (Macroeconomic trends).
+* 🌦 **Weather Prediction (Hava Durumu Tahmini):**
+    * *Short-term:* Saatlik sıcaklık değişimleri ve ani yağışlar (Hourly fluctuations).
+    * *Long-term:* Yıllık iklim döngüleri (Yearly climate cycles).
+* ⚡ **Energy Consumption (Enerji Tüketimi):**
+    * *Short-term:* Anlık yük değişimleri ve talep artışları (Instant load changes).
+    * *Long-term:* Haftalık ve mevsimsel kullanım kalıpları (Weekly usage patterns).
+
+# 🔄 Summary: End-to-End ML/DL Workflow for Time Series
+**(Özet: Zaman Serileri için Uçtan Uca ML/DL İş Akışı)**
+
+Zaman serisi problemleri, standart denetimli öğrenme (supervised learning) problemlerinden farklıdır. Veri noktaları bağımsız değildir (not i.i.d.); zamanın akışı, otokorelasyon ve sıralama kritiktir. Aşağıdaki iş akışı, modern bir veri bilimcisinin **Klasik ML** (XGBoost, LightGBM) ve **Derin Öğrenme** (RNN, LSTM, Transformer) yaklaşımlarını uygularken izlemesi gereken standart prosedürü tanımlar.
+
+---
+
+## 1. Problem Framing
+**(Problemin Çerçevelenmesi)**
+
+Başarılı bir model, kod yazmadan önce doğru tanımla başlar.
+* **Pick the Granularity (Granülariteyi Seçin):** Veri sıklığını belirleyin (saatlik, günlük, haftalık...).
+    * *Trade-off:* Veri çok seyrekse (aylık) sinyal azdır; çok sıksa (dakikalık) gürültü (noise) fazladır.
+* **Decide the Forecast Horizon (Tahmin Ufkuna Karar Verin):** Ne kadar ileriye tahmin yapılacak? (önümüzdeki 24 saat, gelecek 12 hafta...).
+    * *Strategy:* Kısa vade için "One-step ahead", uzun vade için "Multi-step direct" veya "Recursive" stratejiler seçilir.
+* **Choose the Business Metric (İş Metriğini Seçin):** Optimizasyon hedefi iş ihtiyacına uymalıdır.
+    * **MAE/MAPE:** Talep tahmini (Demand) için yaygındır (yorumlanabilirdir).
+    * **RMSE:** Büyük hataları ağır cezalandırmak gerekiyorsa.
+    * **Quantile Loss / Service Level:** Envanter yönetimi (Inventory) için (stoksuz kalmama veya aşırı stok maliyeti dengesi).
+
+---
+
+## 2. Feature Engineering
+**(Özellik Mühendisliği)**
+
+Veriyi modele nasıl sunduğunuz, algoritma türüne göre radikal biçimde değişir.
+
+### A. For Classical ML Models (Trees, Linear, SVR)
+Model "zamanı" ve "sırayı" bilmez, ona biz öğretmeliyiz.
+* **Lag Columns (Gecikme Sütunları):** $t-1, t-7, t-30$ gibi geçmiş değerler. Otokorelasyonu yakalar.
+* **Rolling Window Statistics (Kayan Pencere İstatistikleri):** Trend ve volatiliteyi yakalamak için kayan ortalamalar (rolling means) ve standart sapmalar (rolling stds).
+* **Calendar Flags (Takvim İşaretçileri):** Mevsimselliği yakalamak için. Haftanın günü (weekday dummies), ay, tatil (holiday binary) bilgileri.
+* **External Regressors (Dışsal Değişkenler):** Hava durumu, promosyon bayrağı, web trafiği.
+* **Target Transforms (Hedef Dönüşümleri):**
+    * Log veya Box-Cox dönüşümü, varyansı stabilize etmek için kullanılır.
+    * *Critical Note:* Bu, Lineer Regresyon, SVR, kNN için şarttır (Gaussian varsayımı). Ağaç tabanlı (Tree-based) algoritmalar için zorunlu değildir ancak performansı artırabilir.
+
+### B. For DL Models (RNN/LSTM/Transformers)
+Derin öğrenme, ham dizilerden özellik çıkarabilir.
+* **Raw History (Ham Geçmiş):** Genellikle Lag veya Rolling özelliklere manuel ihtiyaç yoktur; sıralı modeller (sequence models) ham geçmişi okuyarak bu kalıpları öğrenir.
+* **Embeddings (Gömülü Öznitelikler):** Kategorik değişkenler (shop_id, item_id) için "One-Hot Encoding" yerine, öğrenilebilir vektörler olan Embedding katmanları kullanılır. Yüksek kardinalite (high cardinality) için kritiktir.
+* **Scaling (Ölçeklendirme):**
+    * Sürekli kanalları (continuous channels) normalleştirin/standartlaştırın (MinMax veya Z-Score). *DL modelleri ölçeklendirilmemiş veride yakınsamaz (converge).*
+    * İkili (binary) değişkenleri 0/1 olarak bırakın.
+* **Known-Future Features (Bilinen Gelecek Özellikleri):** Gelecek zaman adımları için bilinen veriler (fiyat takvimi, promosyon planı) modele "decoder" veya ek girdi olarak verilir.
+
+---
+
+## 3. Train / Validation Split
+**(Eğitim / Doğrulama Ayrımı)**
+
+Zaman serilerinde **Asla Karıştırma Yapılmaz (No Shuffling)!** Gelecek verisi geçmişe sızmamalıdır (Data Leakage).
+
+### Time-Based Only Strategy
+* **Classical ML (Expanding Window / Walk-Forward):**
+    * **Expanding-Window Back-test:** İlk N gözlemle başla, eğit $\rightarrow$ sonraki bloğu test et. Sonra pencereyi genişlet, tekrar eğit ve test et. Gerçek hayat performansını en iyi simüle eden yöntemdir.
+    * **Walk-Forward:** Her adımda modeli yeniden sığdırır (re-fit). Küçük veri setleri için iyidir ancak hesaplama maliyeti yüksektir.
+* **Deep Learning (Early Stopping):**
+    * **Early-Stopping Split:** Serinin son %10-20'sini bir "doğrulama bloğu" olarak ayırın. Eğitim hatası düşerken doğrulama hatası artmaya başladığında (overfitting) eğitimi durdurun.
+    * **Rolling Validation:** Eğer kaynaklar elveriyorsa, DL modelleri için de çoklu yeniden eğitim (multiple re-trains) yapılabilir.
+    * *Note:* Batch'lerin kronolojik sırayı takip ettiğinden emin olun (özellikle stateful RNN'ler için).
+
+---
+
+## 4. Model Selection & Tuning
+**(Model Seçimi ve Ayarlama)**
+
+### ML (Machine Learning)
+* **Grid / Bayesian Search:** Ağaç derinliği (depth), öğrenme oranı (learning rate) gibi hiperparametreler için Optuna veya basit Grid Search kullanın.
+* **Evaluation:** Her konfigürasyonu Adım 3'teki "Expanding-window" testi ile değerlendirin.
+* **Selection Principle:** İş hedeflerini tutturan en düşük hataya (MAE/MAPE) sahip ve **en basit** modeli seçin (Occam's Razor).
+
+### DL (Deep Learning)
+* **Architecture Tuning:** Katman sayısı, gizli birimler (hidden units), Dropout oranı, Dikkat başlıkları (Attention heads).
+* **Optimizer Schedule:** Öğrenme oranı (Learning Rate) en kritik parametredir. Batch size ve Epoch sayısı ayarlanmalıdır.
+* **Metric:** Erken durdurma (early stopping) için doğrulama kaybını (validation loss) kullanın. Eğer birden fazla konfigürasyon yakınsarsa, onları ayırdığınız test setindeki (hold-out) MAE/MAPE'ye göre sıralayın.
+
+---
+
+## 5. Residual Diagnostics
+**(Artık Değer Teşhisi)**
+
+Model eğitildikten sonra hataları (residuals = Gerçek - Tahmin) analiz edin.
+* **Check:** Artıklar hala bir desen (pattern) gösteriyor mu?
+* **Autocorrelation:** Eğer artıklar arasında otokorelasyon varsa, model bazı sinyalleri kaçırmıştır. Daha fazla Lag ekleyin.
+* **Seasonality:** Eğer hatalarda dönemsellik varsa, mevsimsel kukla değişkenler (seasonal dummies) ekleyin.
+
+---
+
+## 6. Deployment & Monitoring
+**(Dağıtım ve İzleme)**
+
+Model canlıya alındığında iş bitmez.
+* **Automate Retraining:** Yeni veriler geldikçe modelin periyodik olarak yeniden eğitilmesini otomatize edin.
+* **Track Drift:** Canlı hata oranını (live error drift) izleyin. Veri dağılımı değişti mi? (Concept Drift).
+* **Alarms:** Rejim değişiklikleri (regime changes) veya beklenmedik anormallikler için alarmlar kurun.
+
+---
+
+### 📌 Expert Advice
+
+> Eğer zaman serileriniz **kısa, temiz ve düşük gürültülü** (short, clean, low-noise) ise, karmaşık modellere girmeden klasik **ARIMA/SARIMA** ile başlayın.
+>
+> Ancak veri karmaşıksa (yüksek gürültü, çoklu dışsal değişkenler), bir ML yaklaşımı —önce **Boosted Trees (XGBoost/LightGBM)** ile başlayıp, gerekirse **Deep Learning (LSTM/TFT)** tarafına geçmek— genellikle daha düşük hata oranları ve daha zengin içgörüler (richer insights) sağlar.
