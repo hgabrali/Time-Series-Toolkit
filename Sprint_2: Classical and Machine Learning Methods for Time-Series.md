@@ -531,3 +531,665 @@ Once the diagnostics pass, we evaluate the model using specific metrics.
 * **Interpretation:** Evaluate how close the **predictions** are to **actuals** on a test set.
     *(Test setindeki tahminlerin gerçek değerlere ne kadar yakın olduğunu ölçer.)*
 
+# 🗓️ Classical Time-Series Methods: SARIMA
+*(Klasik Zaman Serisi Yöntemleri: SARIMA)*
+
+**SARIMA** (*Seasonal AutoRegressive Integrated Moving Average*), klasik ARIMA modelinin, verilerdeki **mevsimsel döngüleri** (*seasonal cycles*) modelleyebilecek şekilde genişletilmiş halidir.
+
+### 🚀 Why "ARIMA with an S" is the Next Logical Step?
+*(Neden "S" eklenmiş ARIMA bir sonraki mantıksal adımdır?)*
+
+Standard ARIMA models capture a series’ **short-term memory** (*kısa vadeli hafıza*). However, real-world data (e.g., supermarket sales, airline passengers) often repeats patterns every week, month, or quarter.
+*(Standart ARIMA modelleri serinin kısa vadeli hafızasını yakalar. Ancak gerçek dünya verileri genellikle her hafta, ay veya çeyrekte tekrarlayan desenler içerir.)*
+
+> **The Problem:** Traditional ARIMA can’t model repeating boosts (like a Saturday spike) unless you manually inject complex lags.
+> **The Solution:** SARIMA adds a **second, parallel ARIMA layer** that only "wakes up" at the seasonal interval $s$.
+
+---
+
+### 📊 Comparative Analysis Matrix: SARIMA Architecture
+*(Karşılaştırmalı Analiz Matrisi: SARIMA Mimarisi)*
+
+Bu tablo, SARIMA'nın bileşenlerini, çözdüğü problemleri ve teknik detaylarını analiz eder.
+
+| Analysis Area (Analiz Alanı) | Problems & Components (Sorunlar ve Bileşenler) | Technical Detail & Importance (Teknik Detay ve Önem) | Solution Methods (Çözüm Yöntemleri) | Tools & Tests (Araçlar ve Testler) |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Seasonality Handling**<br>*(Mevsimsellik Yönetimi)* | **Problem:** ARIMA'nın mevsimsel şokları (örn. Noel satışları) görememesi.<br>**Component:** **Seasonal Period ($s$)**. | **Detail:** $s$, döngünün uzunluğudur.<br>• Haftalık veri için $s=7$.<br>• Aylık veri için $s=12$.<br>**Importance:** Modelin hangi aralıklarla geçmişe bakacağını belirler. | **Notation:**<br>$$SARIMA(p, d, q) \times (P, D, Q)_s$$<br>Mevsimsel olmayan ve mevsimsel parametrelerin çarpımı. | • **Seasonal Decomposition:** Trend ve mevsimselliği görsel ayırma.<br>• **ACF Plot:** $s, 2s, 3s$ gecikmelerindeki sıçramaları kontrol etme. |
+| **2. Seasonal AutoRegression ($P$)**<br>*(Mevsimsel Oto-Regresyon)* | **Problem:** Bu ayın satışlarının, geçen yılın aynı ayındaki satışlarla ilişkisi.<br>**Component:** **Seasonal AR ($P$)**. | **Detail:** "Kaç tane mevsimsel dün ($t-s, t-2s$) bugünü etkiliyor?" sorusuna yanıt verir.<br>**Importance:** Geçmiş sezonların momentumunu bugüne taşır. | **Interaction:**<br>Standart $p$ (dün) ile Mevsimsel $P$ (geçen yıl bugün) birlikte çalışır. | • **PACF Plot:** $s$ katlarında (12, 24...) keskin düşüşler aranır.<br>• **Grid Search:** En iyi $P$ değerini deneme yanılma ile bulma. |
+| **3. Seasonal Differencing ($D$)**<br>*(Mevsimsel Fark Alma)* | **Problem:** Mevsimsel trendler (yıldan yıla artan yaz trafiği).<br>**Component:** **Seasonal Integrated ($D$)**. | **Detail:** Mevsimsel seviye kaymalarını (*Level Shifts*) kaldırmak için fark alır.<br>Formül: $y_t - y_{t-s}$.<br>**Importance:** Veriyi mevsimsel olarak durgunlaştırır (*Seasonally Stationary*). | **Method:**<br>Genellikle $D=1$ yeterlidir. Bu, seriden "geçen yılın aynı ayını çıkarma" işlemidir. | • **Canova-Hansen Test:** Mevsimsel kararlılık testi.<br>• **Visual Check:** $s$ periyodunda tekrar eden dalgaların düzleşmesi. |
+| **4. Seasonal Moving Average ($Q$)**<br>*(Mevsimsel Hareketli Ortalama)* | **Problem:** Geçmiş sezonlardaki tahmin hatalarının bugüne etkisi.<br>**Component:** **Seasonal MA ($Q$)**. | **Detail:** "Kaç tane mevsimsel hata şoku (*Error Shocks*) kalıcı oluyor?"<br>Örn: Geçen Aralık'taki tahmin hatası bu Aralık'ı düzeltir.<br>**Importance:** Tahminlerin mevsimsel sapmalara karşı dirençli olmasını sağlar. | **Calculation:**<br>Model, $t-s$ zamanındaki hatayı ($e_{t-s}$) kullanarak bugünkü tahmini revize eder. | • **ACF Plot:** $s$ gecikmesindeki (lag $s$) negatif korelasyon veya kesilme noktası. |
+| **5. Model Tuning & Selection**<br>*(Model Ayarlama ve Seçim)* | **Problem:** Toplam 7 parametrenin ($p,d,q,P,D,Q,s$) optimizasyonu.<br>**Component:** **Hyperparameter Tuning**. | **Detail:** Çok sayıda kombinasyon olduğu için model karmaşıklığı artar.<br>**Importance:** Yanlış $s$ veya $D$ seçimi, tamamen hatalı tahminlere yol açar. | **Auto-ARIMA:**<br>`pmdarima` gibi kütüphanelerle parametrelerin otomatik denenmesi (AIC minimizasyonu). | • **AIC/BIC:** Model karşılaştırma.<br>• **Ljung-Box:** Mevsimsel hataların rastgeleliğini test etme. |
+
+---
+
+### 🧩 The Structure of SARIMA
+*(SARIMA'nın Yapısı)*
+
+SARIMA model is denoted as:
+*(SARIMA modeli şu şekilde gösterilir:)*
+
+$$SARIMA(p, d, q) \times (P, D, Q)_s$$
+
+
+
+#### 1. Non-Seasonal Part $(p, d, q)$
+*(Mevsimsel Olmayan Kısım)*
+Standart ARIMA parametreleri. Günlük/kısa vadeli trendleri ve otokorelasyonu yakalar.
+
+#### 2. Seasonal Part $(P, D, Q)_s$
+*(Mevsimsel Kısım)*
+* **P (Seasonal AR):** Looks at past seasonal values.
+    *(Geçmiş mevsimsel değerlere bakar. Örn: Geçen yılın aynı ayı.)*
+* **D (Seasonal Differencing):** Removes repeating seasonal patterns.
+    *(Tekrarlayan mevsimsel desenleri kaldırır. $Series.diff(s)$ işlemi.)*
+* **Q (Seasonal MA):** Looks at past seasonal errors.
+    *(Geçmiş mevsimsel hatalara bakar.)*
+* **s (Period):** The length of the cycle.
+    *(Döngünün uzunluğu. Haftalık için 7, Yıllık (aylık veri) için 12.)*
+
+---
+
+### 💡 Key Takeaway
+*(Temel Çıkarım)*
+
+**SARIMA is like ARIMA, but it’s designed for data that repeats in cycles.**
+*(SARIMA, ARIMA gibidir ancak döngüler halinde tekrarlayan [haftalık veya yıllık satış kalıpları gibi] veriler için tasarlanmıştır.)*
+
+While standard ARIMA handles general trends, **SARIMA** is indispensable when "this December" depends heavily on "last December".
+*(Standart ARIMA genel trendleri yönetirken, "bu Aralık" ayının büyük ölçüde "geçen Aralık" ayına bağlı olduğu durumlarda SARIMA vazgeçilmezdir.)*
+
+# 🗓️ Choosing Seasonal Orders for SARIMA: Step 1
+*(SARIMA İçin Mevsimsel Derecelerin Seçimi: Adım 1)*
+
+Today’s lecture walks you through picking the right **seasonal orders** ($P, D, Q$) and combining them with your **non-seasonal** ($p, d, q$) parameters.
+*(Bugünkü ders, doğru mevsimsel dereceleri [P, D, Q] seçmenize ve bunları mevsimsel olmayan [p, d, q] parametrelerinizle birleştirmenize rehberlik eder.)*
+
+### 🗺️ Our Roadmap
+*(Yol Haritamız)*
+
+1.  **Confirm the seasonal period $s$.**
+    *(Mevsimsel periyodu s'yi doğrula.)*
+2.  **Stationarize** with ordinary and seasonal **differencing**.
+    *(Normal ve mevsimsel fark alma ile durgunlaştır.)*
+3.  Read **seasonal ACF/PACF spikes** to guess $P$ and $Q$.
+    *(P ve Q'yu tahmin etmek için mevsimsel ACF/PACF sıçramalarını oku.)*
+4.  **Grid-search** a small set of $(p, q) \times (P, Q)$.
+    *(Küçük bir (p, q) x (P, Q) seti üzerinde ızgara araması yap.)*
+5.  **Fit the models** to the grid.
+    *(Modelleri ızgaraya uydur/eğit.)*
+6.  **Select the best model** by **AIC/BIC** and **hold-out error**.
+    *(AIC/BIC ve dışarıda tutulan set hatasına göre en iyi modeli seç.)*
+
+---
+
+## 🕵️ Step 1: Confirm the Seasonal Period
+*(Adım 1: Mevsimsel Periyodu Doğrulama)*
+
+Before you can set any seasonal parameters, you must know **how long the season is**. This is the **single most important input** to SARIMA.
+*(Herhangi bir mevsimsel parametre ayarlamadan önce, sezonun ne kadar sürdüğünü bilmelisiniz. Bu, SARIMA için en önemli tek girdidir.)*
+
+### 1. Domain Knowledge (Fast Check)
+*(Alan Bilgisi - Hızlı Kontrol)*
+
+* Does the business talk about "**weekly cycles**" (*haftalık döngüler*), "**monthly billing peaks**" (*aylık fatura zirveleri*), or "**quarterly budgets**" (*çeyreklik bütçeler*)?
+* **Daily Data:** If operations close every weekend, start with **$s = 7$**.
+* **Hourly Data:** Call-center data often cycle every 24 hours → **$s = 24$**.
+
+### 2. Visual Inspection
+*(Görsel İnceleme)*
+
+We will work with the same dataframe as we did with ARIMA.
+Plot the raw series: `train.plot()`
+Look for regularly spaced **ridges** (*sırtlar/tepeler*) or **troughs** (*çukurlar*). Count the spacing in days, hours, or months—that spacing is your candidate $s$.
+
+
+
+> **💡 Think First!**
+> What do you see in the plot?
+> *(Grafikte ne görüyorsunuz?)*
+
+**📉 Our Analysis:**
+* From a quick visual scan, you can see "**ridges**" (higher-than-average clusters of points) and "**troughs**" repeating at a fairly even **cadence** (*ritim/ahenk*).
+* If you mark any spike and count forward to the next one of similar height, you hit roughly the same spot after about **seven days** each time.
+* **Result:** That makes **7 days** the most plausible seasonal period for this daily series—a classic **weekly cycle**.
+
+### 3. Inspect the ACF for Spikes
+*(Sıçramalar İçin ACF'yi İnceleme)*
+
+Plot the plain **ACF** up to, say, $3 \times$ your suspected period.
+*(Normal ACF'yi, şüphelendiğiniz periyodun 3 katına kadar çizdirin.)*
+
+```python
+from statsmodels.graphics.tsaplots import plot_acf
+plot_acf(train.values.flatten(), lags=30)  # Look for bars at s, 2s, 3s...
+```
+
+### 📊 Analyzing the ACF Plot for Seasonality
+*(Mevsimsellik İçin ACF Grafiğini Analiz Etme)*
+
+ACF grafiği, mevsimsel periyodu ($s$) doğrulamak için en güçlü kanıtı sunar.
+
+#### 🚦 Signals (Sinyaller)
+
+* **Positive Signal** (*Pozitif Sinyal*): If vertical bars appear at lag $s, 2s, 3s \dots$ while the in-between lags are small, you’ve found a **seasonal pulse** (*mevsimsel nabız*) at $s$.
+    *(Dikey çubuklar s, 2s, 3s... gecikmelerinde beliriyor ve aradaki gecikmeler küçük kalıyorsa, s noktasında mevsimsel bir etki bulmuşsunuz demektir.)*
+* **Negative Signal** (*Negatif Sinyal*): If no spikes appear, a **seasonal model** may not help.
+    *(Herhangi bir sıçrama görünmüyorsa, mevsimsel bir model yardımcı olmayabilir.)*
+
+
+
+---
+
+### 💡 Think First!
+
+
+> **Reflection:** What do you see in the plot?
+> *(Grafikte ne görüyorsunuz?)*
+
+---
+
+### 📉 Our Analysis
+
+
+Based on the ACF plot, here is the technical breakdown:
+*(ACF grafiğine dayanarak, işte teknik döküm:)*
+
+#### 1. Strong Positive Lag 1 Spike
+*(Güçlü Pozitif 1. Gecikme Sıçraması)*
+* **Observation:** The correlation at Lag 1 is very high.
+* **Interpretation:** Yesterday’s sales are a very good predictor of today’s—this represents classic **short-memory momentum**.
+    *(Dünkü satışlar bugünün çok iyi bir tahmincisidir—bu, klasik kısa vadeli momentumu/hafızayı temsil eder.)*
+
+#### 2. Regular Positive Spikes at Lags 7, 14, 21, 28
+*(7, 14, 21, 28. Gecikmelerde Düzenli Pozitif Sıçramalar)*
+* **Observation:** Every seventh day, the autocorrelation climbs back to roughly **0.5**.
+* **Interpretation:** This confirms a clear **weekly cycle** (*haftalık döngü*). It validates the "**same-day-last-week**" (*geçen hafta aynı gün*) effect.
+
+#### 3. Alternating Negative Bars
+*(Ardışık Negatif Çubuklar)*
+* **Observation:** Values about half a week apart move in **opposite directions**.
+* **Interpretation:** This is typical for a series with **steady seasonality** (*istikrarlı mevsimsellik*) but no long-term trend.
+    *(Yaklaşık yarım hafta aralıklı değerler zıt yönlerde hareket ediyor; bu, istikrarlı mevsimselliği olan ancak uzun vadeli trendi olmayan bir seri için tipiktir.)*
+
+---
+
+### ✅ Conclusion for Step 1
+*(Adım 1 İçin Sonuç)*
+
+Based on the Domain Knowledge, Visual Inspection, and ACF Analysis:
+*(Alan Bilgisi, Görsel İnceleme ve ACF Analizine dayanarak:)*
+
+* **Season length ($m$ or $s$) = 7.**
+* The **weekly pattern** (*haftalık desen*) is dominant.
+    *(Sezon uzunluğu [m veya s] = 7. Haftalık desen baskın.)*
+
+We will proceed with **$s=7$** for our SARIMA model.
+
+# 🗓️ SARIMA Modelling: Steps 2 & 3
+*(SARIMA Modelleme: Adım 2 ve 3)*
+
+Mevsimsel periyodu ($s=7$) doğruladıktan sonra, seriyi **durgunlaştırmalı** (*stationarize*) ve mevsimsel parametreleri ($P, Q$) belirlemeliyiz.
+
+---
+
+## 📉 Step 2: Seasonal Differencing ($D$)
+*(Adım 2: Mevsimsel Fark Alma)*
+
+To apply SARIMA effectively, we need to handle two types of trends:
+*(SARIMA'yı etkili bir şekilde uygulamak için iki tür trendi yönetmemiz gerekir:)*
+
+1.  **Ordinary Differencing ($d$):** Wipes out the **long-term trend**.
+    *(Sıradan Fark Alma: Uzun vadeli trendi siler.)*
+2.  **Seasonal Differencing ($D$):** Flattens the **repeating level** every $s$ periods.
+    *(Mevsimsel Fark Alma: Her s periyodunda tekrarlayan seviyeyi düzleştirir.)*
+
+> **Goal:** After differencing, the **ACF** should no longer show a slow, stair-step decay, and the **mean/variance** should look stable.
+> *(Hedef: Fark alma işleminden sonra, ACF artık yavaş, basamaklı bir azalma göstermemeli ve ortalama/varyans kararlı görünmelidir.)*
+
+---
+
+## 🕵️ Step 3: Guess ($P, Q$) from Seasonal Lags
+*(Adım 3: Mevsimsel Gecikmelerden P ve Q Tahmini)*
+
+We read the **seasonal lags** in ACF & PACF to guess the orders.
+*(Dereceleri tahmin etmek için ACF ve PACF'teki mevsimsel gecikmeleri okuruz.)*
+
+### 🛠️ The Process (Süreç)
+1.  **Run PACF/ACF** on the **seasonally differenced series** (`diff_season`).
+    *(Mevsimsel farkı alınmış seri üzerinde PACF/ACF çalıştırın.)*
+2.  **Look at bars at lags $s, 2s, 3s \dots$** (e.g., 7, 14, 21).
+    *(s, 2s, 3s... gecikmelerindeki çubuklara bakın.)*
+
+### 📏 Rules of Thumb (Pratik Kurallar)
+
+| Plot | Pattern at Lag $s$ | Initial Guess |
+| :--- | :--- | :--- |
+| **Seasonal PACF** | Big spike at lag $s$ (*Lag s'de büyük sıçrama*) | Start with **$P = 1$** (Seasonal AR) |
+| **Seasonal ACF** | Big spike at lag $s$ (*Lag s'de büyük sıçrama*) | Start with **$Q = 1$** (Seasonal MA) |
+
+> **Note:** If spikes persist at $2 \times s$, test $P=2$ or $Q=2$; if they vanish after the first spike, one term is usually enough.
+
+---
+
+
+
+## 📉 Our Analysis: Interpreting the Plots
+*(Analizimiz: Grafikleri Yorumlama)*
+
+We applied **Seasonal Differencing** ($D=1, m=7$). Here is what the plots tell us now:
+*(Mevsimsel Fark Alma uyguladık. İşte grafiklerin bize söyledikleri:)*
+
+<img width="441" height="534" alt="image" src="https://github.com/user-attachments/assets/795c4ccc-6d30-4cab-913a-717efee62867" />
+
+
+### 1. ACF Analysis (Top Chart)
+* **Seasonal Pattern Gone:** No more big spikes at lags 7, 14, 21… This means the **weekly seasonality is gone**.
+    *(Mevsimsel Desen Gitti: 7, 14, 21... gecikmelerinde artık büyük sıçramalar yok. Haftalık mevsimsellik ortadan kalktı.)*
+* **Success:** Seasonal differencing ($D=1, m=7$) worked; the series is now **seasonally stationary**.
+    *(Başarı: Mevsimsel fark alma işe yaradı; seri artık mevsimsel olarak durgun.)*
+* **Non-Seasonal Hint:** The strong **lag-1 negative autocorrelation** suggests we should keep a short non-seasonal MA term (**$q=1$**).
+    *(Mevsimsel Olmayan İpucu: Güçlü negatif lag-1 otokorelasyonu, kısa bir mevsimsel olmayan MA terimi tutmamız gerektiğini önerir.)*
+
+### 2. PACF Analysis (Bottom Chart)
+* **Non-Seasonal AR:** Significant negative partial autocorrelations at lags 1 to 5, then everything dies out.
+    *(Mevsimsel Olmayan AR: 1'den 5'e kadar olan gecikmelerde anlamlı negatif kısmi otokorelasyonlar var, sonra sönümleniyor.)*
+* **Implication:** A finite AR structure of about **$p \approx 5$** is enough to explain the remaining correlation. This matches our previous ARIMA choice ($p=6$).
+    *(Çıkarım: Yaklaşık p=5 olan sonlu bir AR yapısı, kalan korelasyonu açıklamak için yeterlidir.)*
+
+### 3. Choosing $P$ and $Q$ (The Decision)
+* **Observation:** After seasonal differencing, you’d expect remaining seasonality to show up as spikes at lags 7, 14, 21.
+* **Reality:** We have **somehow still significant small spikes**, so it seems the weekly cycle has kind of been removed but traces remain.
+    *(Gerçeklik: Hala bir şekilde anlamlı küçük sıçramalarımız var, bu da haftalık döngünün kısmen kaldırıldığını ancak izlerin kaldığını gösteriyor.)*
+
+> **✅ Final Decision:** Therefore, we will establish **$P = 1$** and **$Q = 1$**.
+> *(Son Karar: Bu nedenle, P=1 ve Q=1 olarak belirleyeceğiz.)*
+
+
+# 🗓️ SARIMA Modelling: Step 4 - Combine & Grid Search
+*(SARIMA Modelleme: Adım 4 - Birleştirme ve Izgara Araması)*
+
+Mevsimsel ($P, D, Q$) ve Mevsimsel Olmayan ($p, d, q$) parametreler için ilk tahminlerimizi yaptık. Şimdi, en iyi kombinasyonu bulmak için sistematik bir arama yapacağız.
+
+---
+
+## 🕸️ The Strategy: Grid-Search a Small Neighbourhood
+*(Strateji: Küçük Bir Komşulukta Izgara Araması)*
+
+Instead of testing every possible number (which takes forever), we define a **small neighbourhood** (*küçük bir komşuluk/aralık*) around our initial guesses.
+*(Her olası sayıyı test etmek yerine [ki bu sonsuza kadar sürer], ilk tahminlerimizin etrafında küçük bir aralık tanımlıyoruz.)*
+
+### 🛠️ The Rules (Kurallar)
+1.  **Keep `d` and `D` fixed:** We already confirmed stationarity.
+    *(d ve D'yi sabit tutun: Durgunluğu zaten doğruladık.)*
+2.  **Try a short list of non-seasonal orders:** e.g., $(p, q) = (1,1), (2,1)$.
+    *(Kısa bir mevsimsel olmayan dereceler listesi deneyin.)*
+3.  **Combine with seasonal pairs:** e.g., $(P, Q) = (1,1)$ or $(0,1)$.
+    *(Mevsimsel çiftlerle birleştirin.)*
+
+> **🚀 Efficiency Tip:** A handful of runs is usually enough to find the **sweet spot** (*en uygun nokta*) without **over-computing** (*aşırı hesaplama/işlem yükü*).
+
+---
+
+## 📊 Designing the Grid
+*(Izgarayı Tasarlama)*
+
+Based on our previous ACF/PACF analysis, here is our search space:
+
+| Parameter | Initial Guess (*İlk Tahmin*) | Neighbourhood to Try (*Denenen Aralık*) | Reasoning (*Mantık*) |
+| :--- | :--- | :--- | :--- |
+| **p** | 5 | **4 – 6** | PACF showed significant lags up to ~5. (*PACF 5'e kadar anlamlıydı.*) |
+| **q** | 1 | **0 – 1** | ACF lag-1 was strong. (*ACF lag-1 güçlüydü.*) |
+| **P** | 1 | **0 – 1** | Only if seasonal PACF at lag 7 looks non-zero. (*Sadece lag 7'de PACF sıfır değilse.*) |
+| **Q** | 1 | **0 – 1** | If seasonal ACF at lag 7 resurfaces. (*Eğer lag 7'de ACF tekrar belirirse.*) |
+| **D** | 1 | **Fixed (1)** | Seasonal differencing already helped. (*Mevsimsel fark alma zaten işe yaradı.*) |
+
+---
+
+## 💻 The Resulting Grid Code
+*(Ortaya Çıkan Izgara Kodu)*
+
+We will create two lists of tuples to iterate through.
+*(Üzerinde döngü kuracağımız iki demet listesi oluşturacağız.)*
+
+```python
+# 1. Non-Seasonal Combinations (p, d, q)
+# We test p around 5, keeping d=0 (from Step 1 stationarity), and q around 1.
+pdq_combinations = [
+    (4, 0, 0), (4, 0, 1),
+    (5, 0, 0), (5, 0, 1),
+    (6, 0, 0), (6, 0, 1)
+]
+
+# 2. Seasonal Combinations (P, D, Q, s)
+# We test P and Q around 0-1, keeping D=1 and s=7.
+seasonal_combinations = [
+    (0, 1, 0, 7),
+    (0, 1, 1, 7),
+    (1, 1, 0, 7),
+    (1, 1, 1, 7)
+]
+```
+
+# 🗓️ SARIMA Modelling: Step 5 - Forecast & Implementation
+*(SARIMA Modelleme: Adım 5 - Tahmin ve Uygulama)*
+
+Model parametrelerini belirledikten sonra, tahmin üretme ve performansı değerlendirme aşamasına geçiyoruz. Ayrıca, bu bölümde **DARTS** kütüphanesinde SARIMA'nın nasıl tanımlandığını göreceğiz.
+
+---
+
+## 🔮 Forecasting Strategy
+*(Tahmin Stratejisi)*
+
+Once the model is fitted, we evaluate its performance using standard metrics.
+*(Model eğitildikten sonra, performansını standart metrikler kullanarak değerlendiririz.)*
+
+1.  **Generate Forecasts:** Predict future values for the validation period.
+    *(Gelecek tahminleri üretin: Doğrulama periyodu için gelecekteki değerleri tahmin edin.)*
+2.  **Compare Against Baseline:** Compare **MAE** (*Mean Absolute Error*) and **RMSE** (*Root Mean Squared Error*) against a **Naïve Seasonal Baseline**.
+    *(Temel Referansla Karşılaştırın: MAE ve RMSE'yi Saf Mevsimsel Referans ile karşılaştırın.)*
+    > **Naïve Seasonal Baseline:** Repeats the value from $t-s$ (e.g., predicting next Monday's sales as exactly last Monday's sales).
+
+---
+
+## 🛠️ Implementation in DARTS
+*(DARTS ile Uygulama)*
+
+To model seasonality with ARIMA in DARTS, we utilize the `seasonal_order` parameter. This effectively mimics the SARIMA functionality found in `statsmodels`.
+
+### The `seasonal_order` Parameter
+*(seasonal_order Parametresi)*
+
+We define the tuple `(P, D, Q, m)`:
+
+* **P:** Seasonal Autoregressive order (*Mevsimsel AR derecesi*)
+* **D:** Seasonal Differencing order (*Mevsimsel Fark Alma derecesi*)
+* **Q:** Seasonal Moving Average order (*Mevsimsel MA derecesi*)
+* **m:** Periodicity of the seasonal component (*Mevsimsel bileşenin periyodu*)
+    * *Example:* $m=7$ for weekly seasonality in daily data.
+
+### 💻 Code Example
+*(Kod Örneği)*
+
+We will configure and fit a SARIMA model using the specific seasonal order identified in our analysis `(1, 1, 1, 7)` combined with a standard ARIMA order (e.g., `p=5, d=0, q=1`).
+
+```python
+from darts.models import ARIMA
+
+# 1. Initialize the Model
+# order=(p, d, q) -> Non-seasonal parameters
+# seasonal_order=(P, D, Q, m) -> Seasonal parameters
+model_sarima = ARIMA(
+    order=(5, 0, 1),           # From Grid Search Step 4
+    seasonal_order=(1, 1, 1, 7) # P=1, D=1, Q=1, m=7
+)
+
+# 2. Fit the Model
+# Assuming 'train' is your Darts TimeSeries object
+model_sarima.fit(train)
+
+# 3. Forecast
+# Predict the next n steps (e.g., 30 days)
+forecast = model_sarima.predict(n=30)
+
+# 4. Visualization (Optional)
+# train.plot(label="Train")
+# forecast.plot(label="Forecast")
+
+```
+
+* After training the model on the training data, we forecast and plot the results:
+
+* <img width="652" height="235" alt="image" src="https://github.com/user-attachments/assets/ce17741e-4dda-4f75-86d9-22d976ba966c" />
+
+# 🏆 Final Step: Evaluation & Success Criteria
+*(Son Adım: Değerlendirme ve Başarı Kriterleri)*
+
+Bir model eğitmek işin sadece yarısıdır. Diğer yarısı ise şu soruyu yanıtlamaktır: **"Bu model, basit bir tahminden gerçekten daha mı iyi?"**
+
+---
+
+## 📏 The Benchmark: Naïve Seasonal Baseline
+*(Kıyaslama Noktası: Saf Mevsimsel Referans)*
+
+Before celebrating low error rates, we must compare our complex SARIMA model against a "dumb" but effective baseline.
+*(Düşük hata oranlarını kutlamadan önce, karmaşık SARIMA modelimizi "basit" ama etkili bir referans noktasıyla kıyaslamalıyız.)*
+
+### 🧐 What is Naïve Seasonal Baseline?
+*(Saf Mevsimsel Referans Nedir?)*
+It simply repeats the value from the last season ($t-s$).
+*(Basitçe son sezonun [t-s] değerini tekrar eder.)*
+
+* **Logic:** "Next Monday's sales will be exactly the same as last Monday's sales."
+    *(Mantık: "Gelecek Pazartesi'nin satışları, geçen Pazartesi'nin satışlarıyla birebir aynı olacak.")*
+* **Formula:** $\hat{y}_t = y_{t-s}$
+
+> **Why do we need this?** If your complex SARIMA model cannot beat this simple logic, then the model is **over-engineered** and useless.
+> *(Neden buna ihtiyacımız var? Eğer karmaşık SARIMA modeliniz bu basit mantığı geçemiyorsa, model aşırı mühendislik ürünüdür ve yararsızdır.)*
+
+---
+
+## 📊 Performance Comparison
+*(Performans Karşılaştırması)*
+
+We evaluate success by comparing error metrics (**MAE** or **RMSE**) between the SARIMA Forecast and the Baseline.
+
+
+
+### 📉 Metrics to Watch (İzlenecek Metrikler)
+
+| Metrik (Metric) | Baseline Score (Örn.) | SARIMA Score (Örn.) | Interpretation (Yorum) |
+| :--- | :--- | :--- | :--- |
+| **MAE** | 50.5 | **32.1** | **Significant Improvement:** SARIMA reduced the average error by ~36%.<br>*(Anlamlı İyileşme: SARIMA ortalama hatayı ~%36 azalttı.)* |
+| **RMSE** | 65.2 | **41.8** | **Better Stability:** The model handles large outliers better than the baseline.<br>*(Daha İyi Kararlılık: Model, büyük aykırı değerleri referanstan daha iyi yönetiyor.)* |
+
+---
+
+## ✅ Success Criteria Checklist
+*(Başarı Kriterleri Kontrol Listesi)*
+
+Your SARIMA model is considered **successful** only if:
+*(SARIMA modeliniz yalnızca şu durumlarda **başarılı** sayılır:)*
+
+1.  [ ] **Lower Error:** MAE/RMSE is **significantly lower** (>10-15%) than the Naïve Seasonal Baseline.
+    *(Daha Düşük Hata: MAE/RMSE, Saf Mevsimsel Referans'tan anlamlı derecede düşüktür.)*
+2.  [ ] **Residuals are Random:** The errors look like **White Noise** (no leftover patterns).
+    *(Hatalar Rastgele: Hatalar Beyaz Gürültü gibi görünür [arta kalan desen yok].)*
+3.  [ ] **Captured Complexity:** The model predicts **trend changes** or **holiday spikes** that the baseline misses.
+    *(Karmaşıklığı Yakalama: Model, referansın kaçırdığı trend değişimlerini veya tatil sıçramalarını tahmin eder.)*
+
+> **🚀 Conclusion:** If the criteria above are met, the model has successfully learned **complex patterns** beyond simple repetition.
+> *(Sonuç: Yukarıdaki kriterler karşılanıyorsa, model basit tekrarların ötesindeki karmaşık kalıpları başarıyla öğrenmiştir.)*
+
+
+# 🏆 SARIMA Modelling: Step 6 - Evaluate, Diagnose & Grid Search
+*(SARIMA Modelleme: Adım 6 - Değerlendirme, Tanılama ve Izgara Araması)*
+
+Modelimizi eğittikten sonra, başarısını sayısal olarak kanıtlamalı ve en iyi parametre kombinasyonunu bulmalıyız.
+
+---
+
+## 📏 Evaluation Metrics
+*(Değerlendirme Metrikleri)*
+
+We use two primary criteria to rank our models:
+*(Modellerimizi sıralamak için iki temel kriter kullanıyoruz:)*
+
+1.  **AIC / BIC:** computed for each fitted model — **lower is better**.
+    *(Her eğitilen model için hesaplanır — daha düşük olması daha iyidir.)*
+2.  **Out-of-Sample MAE or RMSE:** evaluated on a hold-out set — **lower is better**.
+    *(Dışarıda tutulan set [test seti] üzerinde değerlendirilen örneklem dışı hata — daha düşük olması daha iyidir.)*
+
+> **🎯 The Sweet Spot:** When the same model ranks best on **both criteria** (lowest AIC and lowest MAE), you’ve found a well-tuned SARIMA ready for forecasting.
+
+---
+
+## 📊 Comparison: Plain ARIMA vs. SARIMA
+*(Karşılaştırma: Düz ARIMA ve SARIMA)*
+
+Before running the full grid search, let's look at the performance of our initial SARIMA configuration compared to the plain ARIMA we built earlier.
+
+
+
+### Interpretation (Yorumlama)
+* **Visual Performance:** Both the chart and the error numbers blow the plain ARIMA out of the water.
+    *(Hem grafik hem de hata sayıları, düz ARIMA'yı belirgin şekilde geride bırakıyor.)*
+* **Capturing Peaks:** The SARIMA traces the **weekly peaks** (*haftalık zirveleri takip ediyor*) instead of flattening them.
+* **The "S" Factor:** Adding the **seasonal MA term** let the model capture the **7-day rhythm** that ARIMA kept missing.
+    *(Mevsimsel MA terimini eklemek, modelin ARIMA'nın sürekli kaçırdığı 7 günlük ritmi yakalamasını sağladı.)*
+
+---
+
+## 💻 Try it Yourself: The Mini Grid-Search
+*(Kendin Dene: Mini Izgara Araması)*
+
+We’ve already fit one SARIMA configuration. Now, we turn that single-model notebook cell into a **mini grid-search** loop that tries every combination we sketched in Step 4.
+
+### Python Implementation
+*(Python Uygulaması)*
+
+```python
+from darts.models import ARIMA
+from sklearn.metrics import mean_absolute_error
+
+# Define the Grid
+pdq      = [(4,0,0), (4,0,1), (5,0,0), (5,0,1), (6,0,0), (6,0,1)]
+seasonal = [(0,1,0,7), (0,1,1,7)]
+
+best_aic = float('inf')
+best_cfg = None
+
+# Loop through all combinations
+for order in pdq:
+    for s_order in seasonal:
+        # Initialize and Fit
+        model = ARIMA(order=order, seasonal_order=s_order)
+        model.fit(train)
+
+        # Predict and Evaluate
+        pred = model.predict(len(test))
+        mae  = mean_absolute_error(test.values.flatten(),
+                                   pred.values.flatten())
+        
+        # Access AIC from the underlying statsmodels object
+        aic  = model.model.aic          
+
+        print(f"SARIMA{order}×{s_order}   AIC = {aic:.1f}   MAE = {mae:.2f}")
+
+        # Track the Winner (Lowest AIC)
+        if aic < best_aic:
+            best_aic, best_cfg = aic, (order, s_order)
+
+print(f"\n🏆 Best model: SARIMA{best_cfg[0]}×{best_cfg[1]}   AIC = {best_aic:.1f}")
+```
+
+# 🛠️ Common Troubleshooting & Key Takeaways
+*(Yaygın Sorun Giderme ve Temel Çıkarımlar)*
+
+SARIMA modelleri bazen beklenmedik sonuçlar verebilir. Aşağıdaki tablo, sık karşılaşılan belirtileri ve çözüm yollarını özetler.
+
+---
+
+### 🩺 Troubleshooting Matrix
+*(Sorun Giderme Matrisi)*
+
+| Symptom (Belirti) | Likely Issue (Olası Sorun) | Fix (Çözüm) |
+| :--- | :--- | :--- |
+| **ACF still spikes at seasonal lags**<br>*(ACF hala mevsimsel gecikmelerde sıçrama yapıyor)* | **D or (P,Q) too low**<br>*(D veya P/Q değerleri çok düşük)* | **Increase D to 1 or raise P/Q**<br>*(D'yi 1'e çıkarın veya P/Q değerlerini artırın.)* |
+| **Model diverges / fails to converge**<br>*(Model ıraksıyor / yakınsamada başarısız oluyor)* | **Over-differenced or too many params**<br>*(Aşırı fark alma veya çok fazla parametre)* | **Reduce D or drop extra terms**<br>*(D'yi azaltın veya fazladan terimleri çıkarın.)* |
+| **Forecast too flat**<br>*(Tahmin çok düz / değişim göstermiyor)* | **Count or intermittent data**<br>*(Sayım veya kesintili/aralıklı veri)* | **Try SARIMAX or Poisson-based model**<br>*(Dışsal değişkenli [exogenous regressors] SARIMAX veya Poisson tabanlı bir model deneyin.)* |
+
+> ☝🏼 **Pro Tip:** Selecting a set of values for the model parameters is crucial. We highly recommend following a structured guide on **parameter selection**.
+> *(Model parametreleri için bir değer seti seçmek hayati önem taşır. Parametre seçimi konusunda yapılandırılmış bir rehberi takip etmenizi şiddetle öneririz.)*
+
+---
+
+### 🔑 Key Take-aways
+*(Temel Çıkarımlar)*
+
+1.  **Equation:** **SARIMA = ARIMA + Seasonal Layer**. You only need it when ACF/PACF show repeating **seasonal spikes**.
+    *(SARIMA = ARIMA + Mevsimsel Katman. Sadece ACF/PACF tekrarlayan mevsimsel sıçramalar gösterdiğinde buna ihtiyacınız vardır.)*
+2.  **Season Length ($s$):** This is the **first big clue** and is almost always known from **business context** (weekly, monthly, quarterly).
+    *(Sezon uzunluğu [s] ilk büyük ipucudur ve neredeyse her zaman iş bağlamından [haftalık, aylık, çeyreklik] bilinir.)*
+3.  **Start Simple:** Start with $(p,d,q)$ from ARIMA + $(P,D,Q) = (1,1,1)$ and **iterate**.
+    *(Basit başlayın: ARIMA'dan gelen [p,d,q] ve [P,D,Q] = [1,1,1] ile başlayıp tekrarlayarak ilerleyin.)*
+4.  **Guidance:** Let **AIC/BIC** & **Validation Error** guide refinement, just like with ARIMA.
+    *(Rehberlik: Tıpkı ARIMA'da olduğu gibi, iyileştirme sürecine AIC/BIC ve Doğrulama Hatasının rehberlik etmesine izin verin.)*
+
+# ⚠️ Shortcomings of ARIMA & SARIMA Methods: A Critical Analysis
+*(ARIMA ve SARIMA Yöntemlerinin Kısıtlamaları: Kritik Bir Analiz)*
+
+ARIMA ve SARIMA, zaman serisi tahminciliğinin "altın standardı" olarak kabul edilse de, modern veri setlerinin karmaşıklığı karşısında belirgin yapısal zayıflıkları vardır. Aşağıdaki analiz, bu modellerin neden ve nerede başarısız olabileceğini teknik olarak detaylandırır.
+
+---
+
+### 1. 📉 Strict Stationarity Assumption
+*(Katı Durgunluk Varsayımı)*
+
+**The Limitation:** Both models fundamentally assume the data is **stationary** ($Mean$, $Variance$, and $Covariance$ do not change over time).
+*(Kısıtlama: Her iki model de verinin temel olarak durgun olduğunu varsayar.)*
+
+* **Technical Detail:**
+    * **Over-differencing Risk:** Durgunluğu sağlamak için uygulanan fark alma (*differencing, $d$*) işlemi, serideki sinyali yok edebilir (*over-differencing*) ve modelin "hafızasını" yapay olarak kısaltabilir.
+    * **Transformation Issues:** Varyansı sabitlemek için yapılan logaritmik veya Box-Cox dönüşümleri, tahminlerin geri dönüştürülmesinde (*inverse transformation*) sapmalara (*bias*) yol açabilir.
+    * **Unit Root Problems:** Karmaşık serilerde, birim kök testleri (ADF, KPSS) çelişkili sonuçlar verebilir, bu da $d$ parametresinin yanlış seçilmesine neden olur.
+
+### 2. 📏 Linearity Constraint
+*(Doğrusallık Kısıtı)*
+
+**The Limitation:** ARIMA is a **linear model**. It assumes the future is a linear combination of past values and past errors.
+*(Kısıtlama: ARIMA doğrusal bir modeldir. Geleceğin, geçmiş değerlerin ve geçmiş hataların doğrusal bir kombinasyonu olduğunu varsayar.)*
+
+* **Technical Detail:**
+    * **Cannot Capture Volatility:** Finansal verilerde sık görülen **Heteroscedasticity** (*değişen varyans/oynaklık*) durumunu modelleyemez (Bunun için GARCH ailesi gerekir).
+    * **Structural Breaks:** Verideki ani yapısal kırılmaları (örn. pandeminin başlaması) yönetemez; geçmişteki katsayıları geleceğe uygulamaya devam eder ve büyük hatalar üretir.
+    * **Complex Interactions:** Değişkenler arasındaki doğrusal olmayan (*non-linear*) karmaşık ilişkileri (örn. doygunluk noktaları, eşik etkileri) yakalayamaz.
+
+### 3. 🗓️ Rigidity in Seasonality (SARIMA)
+*(Mevsimsellikte Katılık)*
+
+**The Limitation:** SARIMA requires a **fixed integer seasonality** (*sabit tam sayı mevsimsellik*) and struggles with multiple seasonal patterns.
+*(Kısıtlama: SARIMA sabit tam sayı mevsimsellik gerektirir ve çoklu mevsimsel desenlerde zorlanır.)*
+
+* **Technical Detail:**
+    * **Single Seasonality:** SARIMA sadece tek bir döngüyü (örn. sadece haftalık) modeller. Hem haftalık hem yıllık döngüsü olan verilerde (örn. günlük elektrik tüketimi) yetersiz kalır.
+    * **Integer Constraint:** Periyot ($s$) tam sayı olmalıdır. Ancak gerçek hayatta bir yıl 52 hafta değil, **52.14** haftadır. Bu kayma, uzun vadeli tahminlerde faz hatasına (*phase shift*) neden olur.
+    * **Dynamic Seasonality:** Mevsimselliğin zamanla değiştiği (*Modulated Seasonality*) durumlarda (örn. mevsimlerin kayması) model adapte olamaz.
+
+### 4. 🐌 High Computational Cost
+*(Yüksek Hesaplama Maliyeti)*
+
+**The Limitation:** Fitting these models, especially with **Grid Search** (Auto-ARIMA), is computationally expensive ($O(N^2)$ or worse).
+*(Kısıtlama: Bu modelleri eğitmek, özellikle Izgara Araması ile, hesaplama açısından pahalıdır.)*
+
+* **Technical Detail:**
+    * **Stepwise Estimation:** En iyi $(p,d,q)(P,D,Q)$ kombinasyonunu bulmak için modelin yüzlerce kez yeniden eğitilmesi ve her seferinde **AIC/BIC** hesaplanması gerekir.
+    * **Large Lags:** Uzun mevsimsel periyotlar (örn. saatlik veride $s=168$ haftalık döngü) parametre uzayını patlatır ve optimizasyonun yakınsamamasına (*convergence failure*) neden olabilir.
+
+### 5. 🚫 Limited Exogenous Support (ARIMA vs. ARIMAX)
+*(Sınırlı Dışsal Destek)*
+
+**The Limitation:** Standard ARIMA relies solely on endogenous (internal) data.
+*(Kısıtlama: Standart ARIMA yalnızca içsel verilere dayanır.)*
+
+* **Technical Detail:**
+    * **Requirement for Future Values:** **ARIMAX** veya **SARIMAX** gibi uzantılar dışsal değişkenleri (*Exogenous Variables*) desteklese de, tahmin yapabilmek için bu dışsal değişkenlerin **gelecekteki değerlerini** de bilmeniz gerekir (örn. yarının satışını tahmin etmek için yarının hava durumunu bilmek gerekir). Bu, pratikte uygulanabilirliği zorlaştırır.
+
+---
+
+### 🔄 Alternative Approaches
+*(Alternatif Yaklaşımlar)*
+
+Bu kısıtlamaları aşmak için kullanılan diğer klasik ve modern yöntemler:
+
+| Yöntem (Method) | Çözdüğü Sorun (Problem Solved) | Avantajı (Advantage) |
+| :--- | :--- | :--- |
+| **ETS (Exponential Smoothing)** | **Non-Stationarity & Seasonality** | Veriyi durağanlaştırmaya gerek duymaz; trend ve mevsimselliği doğrudan bileşen olarak modeller. |
+| **Prophet (Meta)** | **Multiple Seasonality & Missing Data** | Birden fazla döngüyü (haftalık + yıllık) ve tatilleri esnek bir şekilde modeller; eksik verilere dayanıklıdır. |
+| **TBATS** | **Complex/Non-Integer Seasonality** | Karmaşık ve tam sayı olmayan mevsimsellikleri (örn. 365.25) trigonometrik fonksiyonlarla çözer. |
+| **Machine Learning (XGBoost/LightGBM)** | **Non-Linearity & Exogenous Vars** | Doğrusal olmayan ilişkileri mükemmel yakalar; dışsal değişkenleri yönetmek çok daha kolaydır. |
+
+---
+
+> **💡 Expert Verdict:**
+> ARIMA/SARIMA are excellent for **short-term forecasting** on **simple, stable datasets** where interpretability is key. However, for complex, volatile, or multi-seasonal real-world data, exploring **Machine Learning** or hybrid methods (like Prophet) is often necessary.
+> *(Uzman Kararı: ARIMA/SARIMA, yorumlanabilirliğin kilit olduğu basit ve kararlı veri setlerinde kısa vadeli tahminler için mükemmeldir. Ancak karmaşık, oynak veya çoklu mevsimselliğe sahip gerçek dünya verileri için Makine Öğrenmesi veya hibrit yöntemleri keşfetmek genellikle gereklidir.)*
