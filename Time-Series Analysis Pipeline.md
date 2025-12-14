@@ -35,3 +35,40 @@ EDA ve Ön İşleme aşamalarından sonra, modelleme sürecini standardize etmek
 *(DARTS Avantajının Özeti)*
 
 Geleneksel yöntemlerde her adım (Veri temizleme, özellik üretme, modelleme, test etme) ayrı araçlar ve karmaşık kod blokları gerektirirken; **DARTS**, bu süreci **Analysis Area** başlığından **Tools & Tests** aşamasına kadar tek bir çatı altında (*Unified Framework*) birleştirir.
+
+
+
+# 🕰️ Comprehensive Guide to ARIMA Modelling & Parameters
+*(ARIMA Modelleme ve Parametreler Kapsamlı Rehberi)*
+
+Bu bölüm, Klasik Zaman Serisi Yöntemlerinin (*Classical Time-Series Methods*) temel taşı olan ARIMA modelini, parametre seçimlerini ve doğrulama süreçlerini teknik detaylarla ele alır.
+
+
+
+### 📊 Comparative Analysis Matrix: ARIMA Components & Workflow
+*(Karşılaştırmalı Analiz Matrisi: ARIMA Bileşenleri ve İş Akışı)*
+
+| Analysis Area (Analiz Alanı) | Problems & Components (Sorunlar ve Bileşenler) | Technical Detail & Importance (Teknik Detay ve Önem) | Solution Methods (Çözüm Yöntemleri) | Tools & Tests (Araçlar ve Testler) |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. ARIMA Fundamentals**<br>*(ARIMA Temelleri)* | **Problem:** Güçlü mevsimsel kalıpları olmayan verileri tahmin etme.<br>**Components:**<br>• **AR:** AutoRegression<br>• **I:** Integrated<br>• **MA:** Moving Average | **Detail:** ARIMA, geçmiş değerleri (*AR*), trendleri (*I*) ve geçmiş tahmin hatalarını (*MA*) birleştirir.<br>**Importance:** Verideki trendleri düzelterek (*Adjusting for trends*) doğru tahminler üretmeyi hedefler. | **Combination:**<br>$$ARIMA(p, d, q)$$<br>Üç bileşenin matematiksel kombinasyonu. | • **Forecast Models:** Günlük satış vb. tahminleri.<br>• **Components Check:** Trend ve Otokorelasyon analizi. |
+| **2. Stationarity & Parameter `d`**<br>*(Durgunluk ve d Parametresi)* | **Problem:** Verinin "Durgun" (*Stationary*) olmaması (zamanla artan/azalan trend).<br>**Component:** **Integrated (I)** kısmı. | **Detail:** `d` parametresi, seriyi durgunlaştırmak (sabit ortalama ve varyans) için kaç kez fark alınacağını belirtir.<br>**Importance:** Durgun olmayan veriler modellerin hatalı çalışmasına neden olur. | **Differencing:**<br>Önceki değeri mevcut değerden çıkarma (*Subtracting previous from current*).<br>$$y'_t = y_t - y_{t-1}$$ | • **Visual Check:** Ham seri ve Hareketli Ortalama çizimi.<br>• **ADF Test:** İstatistiksel durgunluk testi.<br>• **Rolling Mean:** Gürültüyü azaltarak trendi görme. |
+| **3. Choosing `d` (Workflow)**<br>*(d Seçimi İş Akışı)* | **Problem:** Trendin varlığına karar verme (Deterministik mi Stokastik mi?).<br>**Decision:** `d=0` vs `d=1`. | **Detail:**<br>• **H0 (Null):** Seri durgun değil (Unit Root var).<br>• **H1 (Alt):** Seri durgun.<br>**Importance:** Aşırı fark alma (*Over-differencing*) gürültü yaratır. | **Step-by-Step:**<br>1. **d=0:** Görsel ve ADF (p<0.05) kontrolü.<br>2. **d=1:** Trend varsa fark al ve tekrar test et.<br>3. **d=2:** Nadiren gerekir. | • **ADF p-value:**<br>If $p < 0.05 \rightarrow$ Stationary ($d=0$ veya işlemi durdur).<br>If $p \ge 0.05 \rightarrow$ Non-Stationary (Fark al). |
+| **4. Choosing `p` (AR Order)**<br>*(p Derecesi Seçimi)* | **Problem:** Geçmiş günlerin bugüne etkisini ölçme.<br>**Component:** **AutoRegression (AR)**. | **Detail:** Bir gecikmenin (*Lag*) şimdiki zaman üzerindeki **saf ve doğrudan etkisi** (*Pure/Direct Effect*).<br>**Importance:** Gereksiz gecikmeler model karmaşıklığını artırır (*Overfitting risk*). | **PACF Analysis:**<br>Güven aralığının (*Confidence Interval*) dışına taşan son anlamlı çubuğu (*Significant Spike*) bulma.<br>• **Cut-off Point:** Yararlı hafızanın bittiği yer. | **PACF Plot:**<br>• **Tall bar outside band:** Anlamlı etki.<br>• **Sharp drop:** Kesilme noktası ($p$ adayı). |
+| **5. Choosing `q` (MA Order)**<br>*(q Derecesi Seçimi)* | **Problem:** Geçmiş hataların bugüne etkisini ölçme.<br>**Component:** **Moving Average (MA)**. | **Detail:** Geçmiş tahmin hatalarının (*Forecast Errors*) şok etkisi.<br>**Importance:** "Geçmişteki kaç hata bugünü hala etkiliyor?" sorusuna yanıt verir. | **ACF Analysis:**<br>ACF grafiğindeki **kesilme noktasına** (*Cut-off*) bakılır.<br>• **Rule:** PACF yerine ACF kullanılır. | **ACF Plot:**<br>• **Sharp Cut-off after Lag q:** MA(q) adayı.<br>• **Gradual Decay:** Genellikle AR sürecini işaret eder. |
+| **6. Diagnostics & Evaluation**<br>*(Tanılama ve Değerlendirme)* | **Problem:** Modelin güvenilirliği ve performansı.<br>**Components:**<br>• **Residuals** (Hatalar)<br>• **Metrics** (Metrikler) | **Detail:** Hatalar **Beyaz Gürültü** (*White Noise*) olmalıdır (Ortalama=0, Varyans=Sabit, Korelasyon=Yok).<br>**Importance:** Hatalarda desen varsa model bilgiyi tam öğrenememiştir. | **Tests:**<br>• **Ljung-Box:** Hataların rastgeleliğini test eder.<br>• **AIC:** Model seçimi (Düşük iyidir).<br>• **MAE/RMSE:** Doğruluk ölçümü. | • **Residual Plots:** Görsel kontrol.<br>• **AIC Score:** Karmaşıklık vs Uyum dengesi.<br>• **Test Set:** Gerçek vs Tahmin karşılaştırması. |
+
+---
+
+
+
+### 📝 Summary of Critical Actions
+*(Kritik Aksiyonların Özeti)*
+
+1.  **Stationarity:** Start with `d=0`. If trend exists (Visual or ADF p $\ge$ 0.05), apply differencing (`d=1`).
+    *(Durgunluk: d=0 ile başla. Trend varsa fark al.)*
+2.  **AR Order (`p`):** Look at the **PACF** plot. Select the lag where the sharp drop occurs.
+    *(AR Derecesi: PACF grafiğine bak. Keskin düşüşün olduğu gecikmeyi seç.)*
+3.  **MA Order (`q`):** Look at the **ACF** plot. Select the lag where the cut-off occurs.
+    *(MA Derecesi: ACF grafiğine bak. Kesilme noktasını seç.)*
+4.  **Validation:** Ensure residuals resemble **White Noise** and minimize **AIC**.
+    *(Doğrulama: Artıkların Beyaz Gürültüye benzediğinden emin ol ve AIC'yi minimize et.)*
