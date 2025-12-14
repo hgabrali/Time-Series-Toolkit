@@ -164,3 +164,127 @@ We use specific Darts methods (like `.split_before()`) to ensure no **data leaka
 ---
 ---
 
+# 🕰️ Classical Time-Series Methods: ARIMA & Parameter `d`
+*(Klasik Zaman Serisi Yöntemleri: ARIMA ve d Parametresi)*
+
+**ARIMA** (*AutoRegressive Integrated Moving Average*), güçlü mevsimsel kalıpları olmayan zaman serisi verilerini anlamak ve tahmin etmek için kullanılan temel bir modeldir.
+
+---
+
+## 🧐 How Does ARIMA Work?
+*(ARIMA Nasıl Çalışır?)*
+
+Imagine you’re trying to forecast the daily sales in a grocery store. ARIMA helps predict the sales for tomorrow by combining three components:
+*(Bir marketin günlük satışlarını tahmin etmeye çalıştığınızı hayal edin. ARIMA, üç bileşeni birleştirerek yarının satışlarını tahmin etmeye yardımcı olur:)*
+
+1.  **AR (AutoRegression):** Looking at how past days’ sales have behaved.
+    *(Geçmiş günlerin satışlarının nasıl davrandığına bakmak [Otokorelasyon].)*
+2.  **I (Integrated):** Correcting for any trends via differencing.
+    *(Fark alma yoluyla trendleri düzeltmek [Entegrasyon].)*
+3.  **MA (Moving Average):** Learning from the errors made in previous predictions.
+    *(Önceki tahminlerde yapılan hatalardan öğrenmek [Hareketli Ortalama].)*
+
+> ☝🏼 **Summary:** ARIMA tries to use the **past values** (AR) and **past prediction errors** (MA) to make accurate forecasts, while adjusting for **trends** in the data (I).
+
+---
+
+## 📉 The "I" in ARIMA and Parameter `d`
+*(ARIMA'daki "I" ve d Parametresi)*
+
+Sometimes data isn’t "**stationary**," meaning it has a trend that increases or decreases over time.
+*(Bazen veriler "durgun" değildir, yani zamanla artan veya azalan bir trende sahiptir.)*
+
+* **The Integrated (I) part** helps by removing these trends to make the data easier to predict.
+* **Method:** It does this by **differencing**—subtracting the previous value from the current value to smooth out the trend.
+    *(Yöntem: Bunu fark alma yoluyla yapar—trendi yumuşatmak için önceki değeri mevcut değerden çıkarır.)*
+
+
+
+> **Definition:** The `d` in `ARIMA(p,d,q)` tells us **how many times** to difference the series to remove a trend and achieve stationarity (constant mean & variance).
+
+---
+
+## 🛠️ Step-by-Step Guide: Choosing `d`
+*(Adım Adım Rehber: d Seçimi)*
+
+### Step 1: Start with No Differencing (`d=0`)
+*(Adım 1: Fark Alma Olmadan Başla)*
+
+#### 1. Visual Check: Plot Your Raw Series
+*(Görsel Kontrol: Ham Seriyi Çizdir)*
+* **Visual Patterns & Drift:** Does a gentle upward or downward drift hide underneath the spikes?
+    *(Sıçramaların altında hafif bir yukarı veya aşağı sürüklenme gizleniyor mu?)*
+* **Mean Level:** Does it look like the mean level is roughly constant, or does it trend up/down?
+    *(Ortalama seviye kabaca sabit mi görünüyor, yoksa yukarı/aşağı trend mi var?)*
+* **Stationarity Assessment:** Based on your visual impression, would you call this series “stationary”?
+
+> **Our Analysis (Example):**
+> * **Visual:** The series shows strong short-term fluctuations but no clear long-term trend. The mean level appears fairly stable around 500–600 units/day.
+> * **Conclusion:** This series appears visually stationary, or at least close enough for many forecasting models (d=0).
+
+#### 2. Rolling Mean Check
+*(Hareketli Ortalama Kontrolü)*
+Let’s smooth out the day-to-day spikes with a **30-day rolling average**. By averaging over a full month, the noisy zero-and-spike pattern flattens out, revealing whether there really is a gradual trend.
+
+
+
+> **Analysis:** The mean level drops early in 2013 but stays stable (430–480 units) afterwards. It may be treated as **near-stationary**.
+
+#### 3. Statistical Check: ADF Test
+*(İstatistiksel Kontrol: ADF Testi)*
+
+**What is ADF Test?** (*Augmented Dickey-Fuller Test*)
+It is a statistical test used to check for **stationarity**.
+* **Null Hypothesis ($H_0$):** The series has a unit root (it is **not stationary**).
+* **Alternative Hypothesis ($H_1$):** The series has no unit root (it is **stationary**).
+
+**Decision Rule:**
+* If **p-value < 0.05**: Reject $H_0$ → Series is **Stationary**. (Accept `d=0`)
+* If **p-value ≥ 0.05**: Fail to reject $H_0$ → Series is **Non-Stationary**. (Try `d=1`)
+
+```python
+# Code snippet for ADF Test
+# Result Example:
+# p-value: 0.000467...
+```
+
+## 📉 Step 2: If Not Stationary, Try One Difference (`d=1`)
+*(Adım 2: Durgun Değilse, Bir Fark Almayı Dene)*
+
+If the visual check showed a **trend** or the **ADF p-value** was **≥ 0.05**:
+*(Eğer görsel kontrol bir trend gösterdiyse veya ADF p-değeri ≥ 0.05 ise:)*
+
+### 🛠️ Process (Süreç)
+
+1.  **Compute the First Difference:**
+    *(Birinci Farkı Hesapla:)*
+    $$y'_t = y_t - y_{t-1}$$
+
+2.  **Visual Check:**
+    *(Görsel Kontrol:)*
+    Does it now **oscillate around zero** with no clear drift?
+    *(Şimdi belirgin bir sürüklenme olmadan sıfır etrafında salınıyor mu?)*
+
+3.  **ADF Test Again:**
+    *(Tekrar ADF Testi:)*
+    If **p < 0.05**, accept `d=1`.
+    *(Eğer p < 0.05 ise, d=1 olarak kabul et.)*
+
+> ⚠️ **Note (Not):** Even if `d=0` passed, we sometimes try `d=1` to see if it improves **model stability**, but be careful not to **over-difference**.
+> *(d=0 geçmiş olsa bile, bazen model kararlılığını iyileştirip iyileştirmediğini görmek için d=1 deneriz, ancak aşırı fark alma [over-differencing] konusunda dikkatli olun.)*
+
+
+## 📌 Summary: Choosing `d`
+*(Özet: d Seçimi)*
+
+Aşağıdaki tablo, görsel analiz ve istatistiksel test sonuçlarına göre `d` parametresini nasıl seçeceğinizi özetler.
+
+| Durum (Condition) | Aksiyon (Action) |
+| :--- | :--- |
+| **Visual:** Flat mean, no trend.<br>*(Düz ortalama, trend yok.)*<br>**ADF:** p < 0.05 | **Stop.** Accept `d=0`.<br>*(Dur. d=0 kabul et.)* |
+| **Visual:** Trend visible.<br>*(Trend görünür.)*<br>**ADF:** p ≥ 0.05 | **Difference once.** Try `d=1`.<br>*(Bir kez fark al. d=1 dene.)* |
+| **Visual:** Still trending after `d=1`.<br>*(d=1 sonrası hala trend var.)*<br>**ADF:** p ≥ 0.05 | **Difference again (Rare).** Try `d=2`.<br>*(Tekrar fark al [Nadir]. d=2 dene.)* |
+
+---
+
+> ⚠️ **Warning (Uyarı):** **Over-differencing** (*Aşırı Fark Alma*) can introduce extra **noise** (*gürültü*) and hurt your **forecast** (*tahmin*). Always balance **visual evidence** (*görsel kanıt*) with **statistical tests** (*istatistiksel testler*).
