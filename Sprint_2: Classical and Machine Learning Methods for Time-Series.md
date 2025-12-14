@@ -1784,3 +1784,200 @@ Aşağıda XGBoost ile ilgili temel kavramları içeren Quiz 4'ün çözümleri 
 > **Technical Note:** Importance is calculated based on metrics like "Gain" (how much a feature improves the tree's accuracy) or "Cover" (number of samples affected).
 > *(Teknik Not: Önem; "Kazanç" [bir özelliğin ağacın doğruluğunu ne kadar artırdığı] veya "Kapsama" [etkilenen örnek sayısı] gibi metriklere göre hesaplanır.)*
 
+
+
+# 🧠 Introduction to Deep Learning: A Time-Series Perspective
+
+
+Derin Öğrenme (Deep Learning - DL), veriden öğrenmek ve modellemek için yapay sinir ağlarını (Artificial Neural Networks - ANNs) kullanan Makine Öğreniminin (Machine Learning - ML) gelişmiş bir alt alanıdır. Bu ağlar, karmaşık desenleri tanımlamada ve bu verilere dayanarak karar vermede mükemmeldir.
+
+Bir Zaman Serisi (Time-Series) uzmanı gözüyle baktığımızda DL, geleneksel istatistiksel yöntemlerin (ARIMA, Exponential Smoothing) tıkandığı noktalarda devreye girer. Özellikle ham veriden önemli özellikleri (features) otomatik olarak çıkarma yeteneği; zaman serileri, görüntü tanıma, dil işleme gibi alanlarda devrim yaratmıştır.
+
+---
+
+## 🏗️ (Deep) Neural Networks: The Architecture
+**((Derin) Sinir Ağları: Mimari)**
+
+Tipik bir sinir ağı (Neural Network - NN), veriyi işlemek ve öğrenmek için birlikte çalışan, nöron (neuron) adı verilen birbirine bağlı katmanlardan oluşur. Bu yapı, insan beyninin çalışma prensibinden esinlenmiştir ancak matematiksel bir optimizasyon makinesidir.
+
+
+ <img width="914" height="430" alt="image" src="https://github.com/user-attachments/assets/1826729f-6ed9-49b8-a6e5-c02c3d9bcae7" />
+
+
+### 1. Input Layer (Girdi Katmanı)
+Modelin dünyaya açılan kapısıdır. Ham özellikler modele buradan girer.
+* **Genel:** Pikseller, kelimeler, sensör okumaları.
+* **Time-Series Özel:** Gecikmeli değerler (lags), kayan pencere istatistikleri (rolling stats), takvim özellikleri (calendar features) veya ham sıralı veriler (t, t-1, t-2...).
+
+### 2. Hidden Layers (Gizli Katmanlar ≥ 1)
+Burası "sihrin" gerçekleştiği yerdir. Girdilerin ağırlıklandırılıp (weighted) işlendiği katmanlardır.
+* Eğer birden fazla gizli katman varsa, ağa **Derin Sinir Ağı (Deep Neural Network - DNN)** denir.
+* **Aktivasyon Fonksiyonları (Activation Functions):** Her nöronun çıktısı, `ReLU`, `Sigmoid` veya `Tanh` gibi doğrusal olmayan (non-linear) fonksiyonlardan geçirilir. Bu, ağın karmaşık, eğrisel ve çok boyutlu ilişkileri öğrenmesini sağlar.
+* *Zaman serilerinde bu katmanlar genellikle LSTM veya GRU hücreleri ya da 1D-CNN filtreleri içerir.*
+
+### 3. Output Layer (Çıktı Katmanı)
+Son aktivasyonlar tahminlere dönüştürülür.
+* **Regresyon (Time-Series):** Genellikle tek bir nöron (gelecekteki satış miktarı, sıcaklık vb.) ve `Linear` aktivasyon.
+* **Sınıflandırma:** Olasılıklar (Softmax) veya sınıflar.
+
+> 📌 **Technical Insight:** Sinir ağının katmanları, girdi verisini bir dizi doğrusal olmayan dönüşüm (nonlinear transformations) yoluyla işler. Bu, ağın "Evrensel Yaklaşıklık Teoremi" (Universal Approximation Theorem) sayesinde teorik olarak herhangi bir fonksiyonu öğrenebilmesine olanak tanır.
+
+---
+
+## ⚙️ How Deep Neural Networks Learn
+**(Derin Sinir Ağları Nasıl Öğrenir?)**
+
+Bir derin öğrenme modelinin faydalı olabilmesi için önce eğitilmesi (training) gerekir. Bu süreç, milyonlarca parametrenin (ağırlıklar ve sapmalar) optimize edildiği iteratif bir döngüdür.
+
+### 1. Forward Propagation (İleri Yayılım)
+Veri, girdi katmanından çıktı katmanına doğru akar. Her katman veriyi işler (matris çarpımı + aktivasyon) ve bir sonrakine iletir. Başlangıçta ağırlıklar rastgeledir, bu yüzden ilk tahminler tamamen yanlıştır.
+
+### 2. Error Calculation: Loss Function (Hata Hesaplama: Kayıp Fonksiyonu)
+Ağ bir tahminde bulunduğunda, model bu tahminin gerçek değerden (Ground Truth) ne kadar uzak olduğunu hesaplar.
+* **Time-Series için:** Genellikle `MSE` (Mean Squared Error), `MAE` (Mean Absolute Error) veya olasılıksal tahminler için `Quantile Loss` kullanılır.
+* **Classification için:** `Cross-Entropy` yaygındır.
+
+### 3. Back-propagation (Geri Yayılım)
+Bu adım, öğrenmenin kalbidir. Kayıp (Loss) hesaplandıktan sonra, ağ hataları azaltmak için ağırlıkları (weights) nasıl ayarlaması gerektiğini matematiksel olarak hesaplar.
+* Hata, çıktıdan girdiye doğru geriye yayılır.
+* Her bir ağırlığın hataya ne kadar katkıda bulunduğu (kısmi türevler/gradyanlar) zincir kuralı (chain rule) ile hesaplanır.
+
+
+
+### 4. Gradient Descent & Optimization (Gradyan İnişi ve Optimizasyon)
+Model, ağırlıkları güncellemek için optimizasyon algoritmaları kullanır.
+* Amaç, kayıp fonksiyonunun en dik iniş yönünü (negatif gradyan) takip ederek global minimuma ulaşmaktır.
+* **Algorithm:** Klasik `SGD` (Stochastic Gradient Descent) yerine, günümüzde genellikle adaptif öğrenme oranına sahip `Adam` (Adaptive Moment Estimation) optimizer tercih edilir.
+
+> 📌 **Training Note:** Eğitim genellikle büyük veri setleri ve birçok iterasyon (veya **epochs**) gerektirir. Aşırı öğrenmeyi (Overfitting) önlemek için `Dropout` veya `Early Stopping` gibi teknikler de bu sürece dahil edilir.
+
+---
+
+## 🛠️ Common Deep Learning Frameworks
+**(Yaygın Derin Öğrenme Çatıları)**
+
+Derin öğrenmeye başlamak, güçlü kütüphaneler sayesinde artık çok daha kolaydır. Bu çerçeveler, arkadaki karmaşık türev ve matris işlemlerini (autograd) otomatik halleder.
+
+| Framework | Açıklama (Description) | Kullanım Alanı (Use Case) |
+| :--- | :--- | :--- |
+| **TensorFlow (Keras)** | Google tarafından geliştirildi. Hem araştırma hem de üretim (production) ortamlarında güçlüdür. `Keras` API'si ile çok hızlı prototip üretilir. | Endüstriyel dağıtım, Mobil (TF Lite). |
+| **PyTorch** | Meta (Facebook) tarafından geliştirildi. Esnekliği ve kullanım kolaylığı ile bilinir. Dinamik hesaplama grafikleri (dynamic computation graphs) hata ayıklamayı kolaylaştırır. | Akademik araştırma, Modern Time-Series kütüphaneleri (PyTorch Forecasting, Darts). |
+
+> **Expert Opinion:** Geçmişte TensorFlow daha yaygındı, ancak modern araştırmalarda ve özellikle zaman serisi için geliştirilen yeni mimarilerde (Transformer tabanlı modeller) **PyTorch** fiili standart haline gelmiştir. "Under the hood" (kaputun altında) çalışan birçok kütüphane PyTorch kullanır.
+
+---
+
+## 🚀 Key Benefits of Deep Learning in Time-Series
+
+
+Geleneksel makine öğrenimine ve klasik istatistiğe (ARIMA vb.) kıyasla DL'in öne çıktığı noktalar:
+
+1.  **Automated Feature Extraction (Otomatik Özellik Çıkarımı):**
+    * Geleneksel yöntemlerde trendi, mevsimselliği ve döngüleri elle ayrıştırmanız gerekir. DL (özellikle CNN ve RNN'ler), ham veriden bu kalıpları otomatik olarak öğrenir.
+2.  **Handling Complex & High-Dimensional Data (Karmaşık ve Çok Boyutlu Veri Yönetimi):**
+    * DL, yapılandırılmamış verilerle (görüntü, metin) çalışabildiği gibi, zaman serilerinde **Global Modeller** (Global Models) oluşturabilir. Yani, 1000 farklı ürünün satış verisini tek bir modelde eğiterek, ürünler arası ilişkileri (cross-learning) öğrenebilir.
+3.  **Non-Linearity & Generalization (Doğrusallık Dışı ve Genelleştirme):**
+    * Zaman serileri nadiren doğrusaldır. DL, karmaşık, kaotik ve doğrusal olmayan ilişkileri modellemede ve görülmemiş verilere genellemede (generalization) üstündür.
+
+---
+
+## ⚠️ Challenges in Deep Learning
+
+
+Pratikte DL kullanmak bazı engelleri aşmayı gerektirir:
+
+* **Data Requirements (Veri Gereksinimleri):** DL modelleri "veri açlığı" çeker. Yüksek performans için genellikle büyük miktarda etiketli geçmiş veriye ihtiyaç duyarlar. Az veriyle (Small Data) klasik yöntemler bazen daha iyi çalışabilir.
+* **Computational Resources (Hesaplama Kaynakları):** Derin ağları eğitmek işlemci gücü ister. GPU'lar (Graphics Processing Units) veya TPU'lar olmadan büyük modelleri eğitmek günler sürebilir.
+* **Interpretability (Yorumlanabilirlik):** Derin ağlar, özellikle çok katmanlı yapılar, genellikle "Kara Kutu" (Black Box) olarak adlandırılır. Bir tahminin *neden* yapıldığını anlamak (Feature Importance), karar ağaçlarına göre daha zordur. Finans veya sağlık gibi alanlarda bu bir risk faktörüdür (gerçi `TFT - Temporal Fusion Transformer` gibi modern mimariler bunu çözmeye odaklanmaktadır).
+
+---
+
+## 🏁 Conclusion
+
+
+Derin Öğrenme, makine öğrenimi görevlerine yaklaşımımızı kökten değiştirdi. Büyük veri setleriyle başa çıkma ve ham veriden anlamlı desenler çıkarma yeteneği, onu modern veri biliminin en güçlü aracı yapar.
+
+Sinir ağlarını kullanarak, DL modelleri karmaşık temsilleri otomatik olarak öğrenir. Bu derste/kapsamda, genel DL mimarilerinin ötesine geçip, Zaman Serisi kullanım durumlarımız (Time Series Use Cases) için özelleşmiş mimarilere odaklanacağız:
+* **RNNs (Recurrent Neural Networks - LSTM/GRU):** Sıralı bağımlılıkları hatırlamak için.
+* **1D-CNNs:** Zaman içindeki yerel desenleri yakalamak için.
+* **Transformers:** Dikkat mekanizması (Attention) ile uzun vadeli ilişkileri modellemek için.
+ 
+
+
+
+# 🔄 Recurrent Neural Networks (RNNs) for Time-Series
+**(Zaman Serileri için Tekrarlayan Sinir Ağları)**
+
+Zaman serisi tahmini (Time-Series Forecasting) için kullanılan Derin Öğrenme mimarileri arasında en temel ve yaygın bilinen iki yapı **Recurrent Neural Networks (RNNs)** ve onların gelişmiş versiyonu olan **Long Short-Term Memory Networks (LSTMs)**'dir.
+
+Bu bölümde, modern sıralı modellemenin (sequential modeling) atası olan RNN'lerin teknik altyapısını ve sınırlamalarını inceleyeceğiz.
+
+---
+
+## 🧠 Recurrent Neural Networks (RNNs)
+
+**Recurrent Neural Networks (RNNs)**, önceki girdilerin bir "hafızasını" (memory) koruyarak sıralı verileri (sequential data) işlemek üzere tasarlanmış özel bir sinir ağı sınıfıdır.
+
+<img width="661" height="310" alt="image" src="https://github.com/user-attachments/assets/3033e0fc-264f-46b2-ba4f-9b7ebfe3f977" />
+
+Bu hafıza yeteneği, bir zaman adımındaki (time step) tahminin, önceki zaman adımlarındaki verilere bağlı olduğu zaman serisi tahmini gibi görevler için onları ideal kılar. Geleneksel İleri Beslemeli (Feed-Forward) ağların aksine, RNN'ler zamanı bir boyut olarak kabul eder.
+
+### Geleneksel Ağlardan Farkı (The Difference)
+
+* **Traditional Neural Networks (Feed-Forward):** Girdiler birbirinden bağımsız kabul edilir (inputs are treated independently). Örneğin, bir kedi fotoğrafını tanıyan model, bir önceki fotoğrafta ne gördüğünü hatırlamaz. Veri akışı tek yönlüdür: Girdi -> Gizli Katman -> Çıktı.
+* **Recurrent Neural Networks (RNNs):** Önceki zaman adımlarından gelen çıktıyı (output), mevcut zaman adımı için girdinin bir parçası olarak kullanır. Bu, RNN'lerin zaman içindeki kalıpları (patterns over time) yakalamasını sağlar.
+
+> 📌 **Expert Note:** RNN'leri, kendi çıktısını bir sonraki adımda kendine girdi olarak veren "döngüsel" (looping) bir yapı olarak düşünebilirsiniz. Bu yapı "açıldığında" (unfolded), her zaman adımı için birbirinin kopyası olan bir ağ zinciri ortaya çıkar.
+
+
+
+---
+
+## ⚙️ How RNNs Work: The "Hidden State"
+**(RNN'ler Nasıl Çalışır: "Gizli Durum")**
+
+Bir RNN'deki her düğüm (node/neuron) sadece mevcut girdiyi işlemekle kalmaz, aynı zamanda ağın önceki durumunu da hatırlar. Bu hafıza mekanizmasına **Gizli Durum (Hidden State)** denir.
+
+Matematiksel olarak süreç şu şekilde işler:
+
+1.  **Input ($x_t$):** $t$ zamanındaki veri.
+2.  **Previous Hidden State ($h_{t-1}$):** Ağın $t-1$ anındaki hafızası.
+3.  **Current Hidden State ($h_t$):** Ağ, mevcut girdiyi ve eski hafızayı birleştirerek yeni bir hafıza durumu oluşturur.
+    * Formül: $h_t = \tanh(W_h \cdot h_{t-1} + W_x \cdot x_t)$
+4.  **Output ($y_t$):** Yeni gizli durum kullanılarak o anki tahmin yapılır.
+
+Bu mekanizma, RNN'lerin tarihsel verilere (historical data) dayalı tahminler yapmasını sağlar ve onları zaman serisi görevleri için doğal bir seçim haline getirir.
+
+### Comparison: FFN vs RNN
+**(Karşılaştırma: İleri Beslemeli vs Tekrarlayan Ağlar)**
+
+* **(a) Fully-Connected (Dense) Networks:** Her girdi bağımsızdır. Zaman kavramı yoktur. $x \to y$
+* **(b) Recurrent Networks:** Girdiler sıralıdır. Şimdiki karar, geçmişe bağlıdır. $x_{t}, h_{t-1} \to y_{t}$
+
+---
+
+## ⚠️ The Limitation: Vanishing Gradient Problem
+**(Kısıt: Kaybolan Gradyan Problemi)**
+
+Teoride RNN'ler, sonsuz geçmişe bakabilir. Ancak pratikte, temel RNN'lerin (Vanilla RNNs) çok ciddi bir sınırlaması vardır: **Vanishing Gradient Problem (Kaybolan Gradyan Problemi)**.
+
+### Bu Problem Nedir?
+Ağı eğitirken **Zaman İçinde Geri Yayılım (Backpropagation Through Time - BPTT)** algoritmasını kullanırız. Hata (loss), zamandan geriye doğru (bugünden geçmişe) yayılırken ağırlıklar (weights) güncellenir.
+
+* Eğer ağırlıklar küçükse (< 1), hata geriye doğru her adımda çarpılarak küçülür.
+* Zincirleme çarpım sonucu (örn. $0.9 \times 0.9 \times 0.9 \dots$), gradyanlar hızla sıfıra yaklaşır.
+* **Sonuç:** Ağ, serinin başındaki (uzak geçmişteki) verileri öğrenemez. Ağırlıklar güncellenemediği için ağın "hafızası" kısalır.
+
+> **Impact:** Ağ sadece yakın geçmişe (short-term memory) odaklanır, uzun vadeli bağımlılıkları (long-term dependencies) öğrenemez. Örneğin, geçen yılki bir trendin bugünkü satışı etkilediğini RNN ile modellemek çok zordur.
+
+---
+
+## ⏭️ Why We Move to LSTMs
+**(Neden LSTM'lere Geçiyoruz?)**
+
+Temel RNN'lerin uzun vadeli bilgiyi "unutma" eğilimi, karmaşık zaman serileri için yetersiz kalmalarına neden olur. İşte bu yüzden, RNN'ler üzerine uzun bir sohbeti atlayıp, doğrudan bu problemin çözümü olan **LSTM (Long Short-Term Memory)** ve **GRU (Gated Recurrent Unit)** ağlarına geçiyoruz!
+
+LSTM'ler, içerdikleri özel "kapı" (gate) mekanizmaları sayesinde hangi bilginin saklanacağını ve hangisinin unutulacağını seçerek kaybolan gradyan problemini çözerler.
+
+
+
