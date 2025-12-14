@@ -1273,3 +1273,326 @@ Aşağıdaki sorular ve teknik açıklamalar, Zaman Serisi Modelleme konusundaki
 > Bu, ARIMA'nın en temel varsayımıdır. **Durağanlık** (*Stationarity*); ortalama, varyans ve otokovaryansın zamanla değişmemesi anlamına gelir.
 >
 > ARIMA doğrusal bir model olduğu için, geçmişteki katsayıları geleceğe uygular. Eğer veride trend veya değişen varyans varsa, bu katsayılar geçersiz olur. Bu nedenle **"I" (Integrated)** bileşeni ile fark alınarak veri durağanlaştırılır.
+
+---
+---
+
+# 🤖 Machine Learning for Time Series: Beyond Classical Methods
+*(Zaman Serileri için Makine Öğrenimi: Klasik Yöntemlerin Ötesi)*
+
+Geleneksel yöntemler (ARIMA, SARIMA, ETS), verileriniz "uslu durduğunda" (*low noise, clear seasonality*) oldukça güçlüdür. Ancak modern iş dünyası verileri genellikle karmaşıktır: binlerce ürün, onlarca dışsal sinyal (*exogenous signals*), rejim değişiklikleri (*regime shifts*) ve doğrusal olmayan etkileşimler içerir.
+
+Bu doküman, Zaman Serisi tahminciliğinde neden ve nasıl **Makine Öğrenimi (ML)** yöntemlerine geçiş yapıldığını teknik derinlikle açıklar.
+
+---
+
+## 1. 🚀 Why Go Beyond "Classic" Forecasting?
+*(Neden "Klasik" Tahminin Ötesine Geçmeliyiz?)*
+
+ARIMA gibi modeller tek değişkenli (*univariate*) ve doğrusal (*linear*) varsayımlara dayanır. Makine öğrenimi modelleri ise şu avantajları sunar:
+
+* **Non-Linear Patterns (Doğrusal Olmayan Desenler):** Satışlar ve fiyat arasındaki ilişki genellikle doğrusal değildir (örn. fiyat belli bir eşiği geçince satışlar çakılır). ML modelleri (özellikle ağaç tabanlılar ve sinir ağları) bu karmaşık etkileşimleri otomatik öğrenir.
+* **Covariates & Exogenous Variables (Dışsal Değişkenler):** Klasik modellerde dışsal değişken eklemek (*ARIMAX*) zordur. ML modelleri hava durumu, promosyonlar, web trafiği gibi yüzlerce değişkeni (*feature*) zorlanmadan modele dahil eder.
+* **Global Models & Cross-Learning (Global Modeller ve Çapraz Öğrenme):**
+    * *Classic:* Her ürün için ayrı bir ARIMA modeli eğitilir (1000 ürün = 1000 model).
+    * *ML:* Tek bir model, 1000 ürünün tamamından veriyi öğrenerek (*shared parameters*), geçmişi az olan yeni ürünler (*cold-start problem*) için bile diğer ürünlerden öğrendiği kalıpları kullanarak tahmin yapabilir.
+* **Forecasting Strategy (Tahmin Stratejisi):** ML modelleri, hatayı adım adım biriktiren özyinelemeli (*recursive*) yöntemler yerine, geleceği doğrudan tahmin eden (*Direct Multi-step Forecast*) stratejileri daha iyi uygulayabilir.
+
+---
+
+## 2. 🔄 How ML Treats Time-Series Differently
+*(ML Zaman Serilerine Nasıl Farklı Davranır?)*
+
+ML algoritmaları (XGBoost, Neural Networks) zamanın sıralı yapısını doğrudan anlamazlar; veriyi onlara "öğretmemiz" gerekir.
+
+| Konu (Topic) | Classical View (ARIMA/ETS) | ML View (Machine Learning) |
+| :--- | :--- | :--- |
+| **Input Shape**<br>*(Girdi Şekli)* | **1-D Sequence:** Veri sıralı bir vektördür. Model, $t$'deki değeri $t-1$'e bakarak tahmin eder. | **Tabular / Matrix:** Veri, denetimli öğrenme (*Supervised Learning*) problemine dönüştürülmelidir. Kayan pencereler (*Sliding Windows*) kullanılarak Özellik Matrisi ($X$) ve Hedef Vektörü ($y$) oluşturulur. |
+| **Stationarity**<br>*(Durgunluk)* | **Critical:** Trend ve varyans sabitlenmelidir (Fark alma, Log dönüşümü). | **Flexible:** Ağaç tabanlı modeller durağan olmayan verilerle başa çıkabilir, ancak trendi "extrapolate" edemezler (eğitim setindeki max değerin üzerine çıkamazlar). Bu yüzden trendin arındırılması (*Detrending*) ML için de önemlidir. |
+| **Model Family**<br>*(Model Ailesi)* | **Parametric:** Katsayıları bellidir, yorumlanabilirliği yüksektir. | **Non-Parametric / Black Box:** Esnektir (Ağaçlar, Sinir Ağları), çok karmaşık fonksiyonları öğrenir ancak "neden" sorusunu yanıtlamak (Feature Importance hariç) zordur. |
+| **Forecast Strategy**<br>*(Tahmin Stratejisi)* | **Local (One-by-One):** Her seri için parametreler optimize edilir. | **Global:** Binlerce seri tek bir havuzda toplanır. Model genel kalıpları (*global structure*) öğrenir. |
+| **Feature Engineering**<br>*(Özellik Müh.))* | **Minimal:** Lag ve Moving Average modelin içindedir. | **Heavy:** Lag, Rolling Mean, Calendar Features (Ay, Gün) manuel olarak üretilmelidir. |
+
+
+
+---
+
+## 3. 🤖 Common ML Models for Time-Series
+*(Zaman Serileri için Yaygın ML Modelleri)*
+
+### A. Tree-Based Ensembles (Ağaç Tabanlı Topluluklar)
+* **Models:** XGBoost, LightGBM, CatBoost, Random Forest.
+* **Mechanism:** Karar ağaçlarının topluluğunu oluşturarak tahmin yapar. Veriyi "bölerek" (*splitting*) öğrenir.
+* **✅ Pros:**
+    * Tablo şeklindeki verilerde (*Tabular Data*) ve heterojen özelliklerde (kategorik + sayısal) SOTA (*State-of-the-Art*) performansı verir.
+    * Eksik verileri (*Missing Values*) doğal olarak yönetir.
+    * Hızlıdır ve yorumlanabilir (*Feature Importance*).
+* **❌ Cons:**
+    * **Extrapolation Problem:** Eğitim verisinde gördüğü maksimum değerden daha yüksek bir değer tahmin edemez. Trend varsa mutlaka veri temizlenmeli veya lineer bir modelle birleştirilmelidir.
+    * Manuel **Feature Engineering** (Lag, Rolling) gerektirir.
+
+### B. Recurrent Neural Networks (RNNs)
+* **Models:** LSTM (*Long Short-Term Memory*), GRU (*Gated Recurrent Unit*).
+* **Mechanism:** Veriyi sıralı işler. "Hidden State" (Gizli Durum) sayesinde geçmiş bilgiyi hafızasında tutar.
+* **✅ Pros:**
+    * Uzun vadeli bağımlılıkları (*Long-term dependencies*) ve sıralı kalıpları doğal olarak öğrenir.
+    * Manuel özellik mühendisliği ihtiyacı daha azdır.
+* **❌ Cons:**
+    * Sıralı işlem yaptığı için eğitimi yavaştır (*Non-parallelizable*).
+    * "Vanishing Gradient" problemi yaşayabilir.
+
+
+
+### C. Temporal Convolutional Networks (TCNs) & 1-D CNNs
+* **Mechanism:** Görüntü işlemedeki CNN'lerin zaman serisine uyarlanmış halidir. Genişleyen evrişimler (*Dilated Convolutions*) kullanarak geniş bir geçmişe bakar.
+* **✅ Pros:**
+    * RNN'lerden çok daha hızlıdır (Paralel işlem yapılabilir).
+    * Uzun dizilerde kararlıdır.
+* **❌ Cons:**
+    * Çok fazla veri gerektirir.
+
+
+
+### D. Transformers / Attention Models
+* **Models:** TFT (*Temporal Fusion Transformer*), Informer, Autoformer.
+* **Mechanism:** "Attention" (*Dikkat*) mekanizması ile serinin hangi geçmiş noktalarının o anki tahmin için önemli olduğuna odaklanır.
+* **✅ Pros:**
+    * Uzun ufuklu tahminlerde (*Long-horizon forecasts*) şu anki en ileri teknolojidir.
+    * Yorumlanabilirlik (*Interpretability*) sunar (TFT).
+* **❌ Cons:**
+    * GPU gücü ve çok büyük veri seti gerektirir.
+
+### E. Hybrid Models (Statistical + ML)
+* **Models:** Prophet (Trend + Seasonality + Regressors), ES-RNN, N-BEATS.
+* **Mechanism:** İstatistiğin (Trend/Mevsimsellik ayrıştırma - STL) gücünü ML'in (Artıklar/Residuals üzerindeki öğrenme) gücüyle birleştirir.
+* **✅ Pros:**
+    * "Best of both worlds": Hem trendi iyi yönetir hem de karmaşık ilişkileri.
+
+---
+
+## 📅 Next Steps
+
+1.  **Tree-Based Methods:** XGBoost kullanarak **Feature Engineering** (Özellik Mühendisliği) tekniklerine ve denetimli öğrenme dönüşümüne odaklanacağız.
+2.  **Deep Learning:** LSTM ve RNN mimarilerini inceleyerek sıralı veri modellemeyi öğreneceğiz.
+
+
+2.2. Creating Rolling Statistics: <img width="652" height="351" alt="image" src="https://github.com/user-attachments/assets/2fec113a-327a-4fcb-9eca-fc62a18f8205" />
+
+
+# 🛠️ Feature Engineering for Time Series: Lags & Rolling Windows
+*(Zaman Serileri için Özellik Mühendisliği: Gecikmeler ve Kayan Pencereler)*
+
+Ağaç tabanlı algoritmalar (*Decision Trees, XGBoost, LightGBM, Random Forest*), her bir veri satırını zamandan bağımsız, tekil bir anlık görüntü (*independent snapshot*) olarak ele alır. Bu modeller, biz onlara dünün değerini ayrı bir sütun olarak vermediğimiz sürece "dünü" hatırlamazlar.
+
+Modelin **momentum**, **ortalamaya dönüş** (*mean-reversion*) ve **mevsimsellik** (*seasonality*) gibi kalıpları öğrenebilmesi için, **Gecikme** (*Lag*) ve **Kayan Pencere** (*Rolling-Window*) özelliklerini kullanarak veriye zamansal bir hafıza enjekte etmeliyiz.
+
+---
+
+## 1. The Core Feature Types
+*(Temel Özellik Türleri)*
+
+Zaman serisi problemlerinde kullanılan en yaygın özelliklerin teknik özeti:
+
+| Feature (Özellik) | What it captures (Neyi Yakalar?) | Typical Notation (Tipik Gösterim) |
+| :--- | :--- | :--- |
+| **Lag**<br>*(Gecikme)* | **Exact Memory:** $k$ adım önceki kesin değer. Modelin otokorelasyonu (*autocorrelation*) öğrenmesini sağlar.<br>*Örn: Dünkü satış.* | `lag_1`, `lag_7`, `lag_30` |
+| **Rolling Mean**<br>*(Kayan Ortalama)* | **Local Trend / Level:** Belirli bir penceredeki ortalama seviye. Modelin "temel çizgisini" (*baseline*) belirler.<br>*Örn: Son 7 günün ortalaması.* | `roll_mean_7`, `ma_7` |
+| **Rolling Std / Var**<br>*(Kayan Standart Sapma)* | **Volatility / Uncertainty:** Yakın geçmişteki oynaklık. Verinin ne kadar kararsız olduğunu gösterir.<br>*Örn: Son 14 gündeki değişim.* | `roll_std_14` |
+| **Count-since-last-zero**<br>*(Son sıfırdan beri geçen süre)* | **Inter-arrival Info:** Kesintili talep (*intermittent demand*) veya nadir olaylar için geçen süreyi ölçer. | `days_since_last_sale` |
+
+
+
+---
+
+## 2. Step-by-Step Code Walkthrough
+*(Adım Adım Kod Rehberi)*
+
+### 2.1. Loading and Preparing Data
+*(Veriyi Yükleme ve Hazırlama)*
+
+Veri manipülasyonu için gerekli kütüphaneleri yükleyerek ve veri setini hazırlayarak başlıyoruz.
+
+*(Not: Veri setinizin `datetime` indeksine sahip olduğundan ve frekansının (günlük/saatlik) düzgün ayarlandığından emin olun.)*
+
+### 2.2. Feature Engineering for Machine Learning
+*(Makine Öğrenimi için Özellik Mühendisliği)*
+
+Gözetimli makine öğrenimi modelleri (*Supervised ML models*), girdi olarak bir özellik koleksiyonuna ihtiyaç duyar. XGBoost gibi modellerin zaman serisi tahmininde başarılı olabilmesi için ham veriyi anlamlı sinyallere dönüştürmeliyiz.
+
+#### A. Creating Lag Features (Gecikme Özellikleri Oluşturma)
+Lag özellikleri, zaman serisinin geçmiş değerlerini temsil eder. Bu özellikler, modelin "Dün ne oldu?", "Geçen hafta bugün ne oldu?" sorularına cevap vermesini sağlar.
+
+```python
+# Create lag features (e.g., sales from the previous day, previous week)
+# Gecikme özellikleri oluşturma (örn. önceki günün, önceki haftanın satışları)
+
+# t-1: Dünkü değer (En önemli özelliklerden biridir)
+df_filtered['lag_1'] = df_filtered['unit_sales'].shift(1)
+
+# t-7: Geçen hafta aynı günün değeri (Haftalık mevsimselliği yakalar)
+df_filtered['lag_7'] = df_filtered['unit_sales'].shift(7)
+
+# t-30: Geçen ayki değer (Aylık döngüyü yakalar)
+df_filtered['lag_30'] = df_filtered['unit_sales'].shift(30)
+
+# Drop NaN values created by shifting
+# Lag işlemi (shift) ilk satırlarda NaN (boş) değerler oluşturur, bunları temizlemeliyiz.
+df_filtered.dropna(inplace=True)
+```
+
+# 🚨 Critical Concept: Data Leakage & Rolling Features
+*(Kritik Kavram: Veri Sızıntısı ve Kayan Özellikler)*
+
+Zaman serisi özellik mühendisliğinde en sık yapılan ve en tehlikeli hata, gelecekteki bilgiyi modele sızdırmaktır.
+
+---
+
+## 1. The "Shift" Imperative: Avoiding Data Leakage
+*(Kaydırma Zorunluluğu: Veri Sızıntısından Kaçınma)*
+
+**The Rule:** You cannot use data from time $t$ to predict time $t$. You must use data from $t-1, t-2...$
+*(Kural: t zamanını tahmin etmek için t zamanındaki veriyi kullanamazsınız. t-1, t-2... verilerini kullanmalısınız.)*
+
+### 🚫 The Mistake (Hata)
+If you calculate a rolling mean **without shifting**:
+`df['rolling_mean'] = df['sales'].rolling(7).mean()`
+* The mean for "Today" includes "Today's Sales".
+* The model sees the answer (Target) inside the input feature.
+* **Result:** 99% accuracy in training, massive failure in production. This is called **Look-ahead Bias**.
+
+### ✅ The Fix (Çözüm)
+Always **shift first**, then roll.
+`df['rolling_mean'] = df['sales'].shift(1).rolling(7).mean()`
+* Now, "Today's" rolling mean is actually calculated using data from "Yesterday" backwards.
+
+
+
+---
+
+## 2. Mastering Rolling Statistics
+*(Kayan İstatistiklerde Ustalaşmak)*
+
+Kayan istatistikler, veriye **bağlam** (*context*) kazandırır. Tek bir veri noktası gürültülü olabilir, ancak bir pencerenin özeti daha kararlı bir sinyaldir.
+
+
+
+### 📈 Rolling Mean (Kayan Ortalama)
+* **Purpose:** Smooths out short-term noise and captures the **Local Level/Trend**.
+    *(Kısa vadeli gürültüyü yumuşatır ve Yerel Seviyeyi/Trendi yakalar.)*
+* **Usage:** Acts as a "baseline" prediction. If the rolling mean is rising, the tree model sets a higher starting point for the forecast.
+
+### 📊 Rolling Standard Deviation (Kayan Standart Sapma)
+* **Purpose:** Measures **Volatility** (*Oynaklık*) and **Uncertainty** (*Belirsizlik*).
+* **Usage:**
+    * **Low Rolling Std:** The series is stable; the model can trust the `lag_1` value more.
+    * **High Rolling Std:** The series is chaotic; the model may be more conservative or rely more on the rolling mean than the immediate lag.
+
+---
+
+## 💻 Correct Implementation Pattern
+*(Doğru Uygulama Deseni)*
+
+```python
+# 1. Correct: Shift THEN Roll (No Leakage)
+# Doğru: Önce Kaydır SONRA Yuvarla (Sızıntı Yok)
+df['feature_roll_mean_7'] = df['sales'].shift(1).rolling(window=7).mean()
+
+# 2. Wrong: Roll on current values (Leakage!)
+# Yanlış: Mevcut değerler üzerinde yuvarla (Sızıntı!)
+# df['feature_roll_mean_7'] = df['sales'].rolling(window=7).mean()  <-- DO NOT DO THIS
+
+```
+
+# 📅 Date-based Features & Model Logic
+*(Tarih Bazlı Özellikler ve Model Mantığı)*
+
+Gecikme (*lag*) ve kayan pencere (*rolling window*) özelliklerine ek olarak, zamanın kendisinden türetilen özellikler, modelin **periyodik desenleri** (*periodic patterns*) öğrenmesi için kritiktir.
+
+Ağaç tabanlı modeller (*Tree-based models*), "zamanın akışını" bilmezler. Onlar için `2023-12-31` ile `2024-01-01` arasındaki ilişki belirsizdir. Bu ilişkiyi açık hale getirmek için zaman damgasını parçalarına ayırmalıyız.
+
+---
+
+### 1. 📆 Extracting Date Features
+*(Tarih Özelliklerini Çıkarma)*
+
+Zaman damgasından (*timestamp*) aşağıdaki özellikleri türeterek modelin mevsimselliği yakalamasını sağlarız:
+
+```python
+# Assuming the index is a datetime object
+# İndeksin datetime objesi olduğunu varsayıyoruz
+
+# 1. Basic Calendar Features (Temel Takvim Özellikleri)
+df_filtered['day_of_week'] = df_filtered.index.dayofweek  # 0=Mon, 6=Sun
+df_filtered['day_of_month'] = df_filtered.index.day
+df_filtered['month'] = df_filtered.index.month
+df_filtered['quarter'] = df_filtered.index.quarter
+df_filtered['year'] = df_filtered.index.year
+
+# 2. Boolean Flags (Mantıksal Bayraklar)
+# Haftasonu etkisi için (Cumartesi/Pazar)
+df_filtered['is_weekend'] = df_filtered.index.dayofweek.isin([5, 6]).astype(int)
+
+# Yıl sonu/başı etkisi için
+df_filtered['is_month_start'] = df_filtered.index.is_month_start.astype(int)
+df_filtered['is_month_end'] = df_filtered.index.is_month_end.astype(int)
+```
+
+## 2. 🧠 How the Model Uses These Features
+*(Model Bu Özellikleri Nasıl Kullanır?)*
+
+Bir karar ağacı (*Decision Tree*), bu özellikleri kullanarak tahmin uzayını "böler" (*split*). Modelin bu özellikleri nasıl yorumladığını anlamak, model başarısını artırır.
+
+
+| Feature Interaction (Özellik Etkileşimi) | Decision Tree Logic (Karar Ağacı Mantığı) |
+| :--- | :--- |
+| **Seasonal Spikes**<br>*(Mevsimsel Sıçramalar)* | **Logic:** `IF is_weekend == 1 THEN Predict High`<br><br>Ağaç, hafta sonu bayrağını gördüğünde dallanır ve Cumartesi/Pazar için temel tahmin değerini yükseltir (*boost*). |
+| **Holiday Effects**<br>*(Tatil Etkileri)* | **Logic:** `IF month == 12 AND day > 20 THEN Predict Very High`<br><br>Model, Aralık ayının son günlerinde ortalamaların yüksek olduğunu öğrenerek yıl sonu yoğunluğunu yakalar. |
+| **Local Smoothing**<br>*(Yerel Yumuşatma)* | **Logic:** `IF rolling_mean_7 > 50 THEN Predict > 45`<br><br>`rolling_mean` dinamik bir taban çizgisi (*dynamic baseline*) görevi görür. Trend yukarı yönlü ise, `lag_1` (dünkü satış) 0 olsa bile (stok bitmesi vb.), model ortalamaya güvenerek tahmini yüksek tutabilir. |
+| **Volatility Awareness**<br>*(Volatilite Farkındalığı)* | **Logic:** `IF rolling_std_7 > 10 THEN Widen Interval`<br><br>Yüksek standart sapma, model için bir uyarıdır: "Büyük değişimler olabilir." Model, bu durumda daha muhafazakar davranabilir veya tahmin aralığını genişletebilir. |
+
+### 🔑 Key Take-aways
+
+
+Zaman serisi özellik mühendisliğinde kullanılan üç temel sütun türünün özeti:
+
+
+
+* **Lag Columns** (*Gecikme Sütunları*):
+    * **Provide Exact Memory** (*Kesin Hafıza Sağlar*).
+    * **Captures Autocorrelation** (*Otokorelasyonu Yakalar*).
+    * *Example:* "Yesterday's price directly affects today's price."
+        *(Örnek: "Dünün fiyatı bugünün fiyatını doğrudan etkiler.")*
+
+* **Rolling Columns** (*Kayan Sütunlar*):
+    * **Provide Context** (*Bağlam Sağlar*).
+    * **Captures Level** (*Seviye*) and **Volatility** (*Oynaklık*).
+    * *Example:* "Is the general trend rising or falling this week?"
+        *(Örnek: "Genel trend bu hafta yükseliyor mu yoksa düşüyor mu?")*
+
+* **Calendar Columns** (*Takvim Sütunları*):
+    * **Encode Periodic Effects** (*Periyodik Etkileri Kodlar*).
+    * Eliminates the need for manual one-hot encoding for every single date.
+        *(Her bir tarih için manuel one-hot encoding yapma ihtiyacını ortadan kaldırır.)*
+    * *Example:* "Sales always spike on Fridays."
+        *(Örnek: "Satışlar her zaman Cuma günleri zirve yapar.")*
+
+---
+
+### 🛡️ Safety First
+
+
+> **⚠️ Avoid Leaking Future Info**
+> *(Gelecek Bilgisini Sızdırmaktan Kaçının)*
+>
+> Always **shift** your data before calculating rolling statistics. If you include "today" in your "average of the last 7 days", the model will cheat by seeing the answer.
+> *(Kayan istatistikleri hesaplamadan önce verilerinizi her zaman **kaydırın**. Eğer "son 7 günün ortalamasına" "bugünü" dahil ederseniz, model cevabı görerek hile yapar.)*
+>
+> **Correct Syntax:** `shift(1).rolling(7)`
+
+# XGBoost
+
+ <img width="905" height="443" alt="image" src="https://github.com/user-attachments/assets/572c3f18-add6-4445-913a-59eefed430c1" />
+
+
+ 
+
