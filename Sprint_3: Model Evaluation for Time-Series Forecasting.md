@@ -1342,3 +1342,118 @@ graph TD
     style Step3 fill:#ce93d8,stroke:#4a148c
     style Step4 fill:#ba68c8,stroke:#4a148c
     style Step5 fill:#ab47bc,stroke:#4a148c,color:#fff
+```
+# 🚀 Model Development Strategy for Demand Forecasting
+(Talep Tahmini İçin Model Geliştirme Stratejisi)
+
+Bu "Capstone" (bitirme) projesinde, **Corporación Favorita** veri seti üzerinde uçtan uca bir modelleme süreci yürüteceğiz. Amacımız sadece bir model eğitmek değil; **XGBoost** ve **LSTM** gibi farklı mimarileri yarıştırıp, **MLflow** üzerinde sonuçları şeffaf bir şekilde kıyaslayarak "kazananı" (champion model) belirlemektir.
+
+---
+
+## 🏗️ 1. Model Mimari Yaklaşımı (Architecture Approach)
+
+Farklı matematiksel temellere sahip iki güçlü adayı sahaya sürüyoruz:
+
+### A. Güçlü Başlangıç: XGBoost (Tree-based Baseline)
+* **Nedir?** Karar ağacı tabanlı, gradyan artırma (Gradient Boosting) algoritmasıdır.
+* **Neden Kullanıyoruz?** Yapısal/Tablo verilerinde (Tabular Data) genellikle en iyi sonucu verir. Doğrusal olmayan (non-linear) ilişkileri çok hızlı öğrenir.
+* **Teknik Detay:** XGBoost zamanın akışını (sequence) kendiliğinden bilmez. Bu yüzden ona **Feature Engineering** ile geçmiş verileri (Lags, Rolling Means) sütun olarak veririz.
+
+### B. Sıralı Öğrenme: LSTM (Deep Learning)
+* **Nedir?** Uzun Kısa Süreli Bellek (Long Short-Term Memory) ağlarıdır.
+* **Neden Kullanıyoruz?** Zaman serisindeki **zamansal bağımlılıkları (temporal dependencies)** otomatik olarak öğrenebilir.
+* **Teknik Detay:** Veriyi 3 boyutlu (Samples, Time Steps, Features) işler ve uzun vadeli kalıpleri hafızasında tutabilir.
+
+---
+
+## 🧰 2. Değerlendirme Araç Seti (Metric Toolbox)
+
+Modelin başarısını tek bir sayıya indirgemek tehlikelidir. Farklı açılardan (açı, yön, büyüklük) değerlendirme yapıyoruz:
+
+| Metrik | Soru | İş Anlamı (Business Value) |
+| :--- | :--- | :--- |
+| **Bias** | Are we systematically over/under-predicting? | Model sürekli **fazla stok** (maliyet) veya **eksik stok** (satış kaybı) mu öneriyor? Yönü belirler. |
+| **MAD / MAE** | How far off, on average? | Ortalama hata büyüklüğü. Yöneticilere raporlarken en anlaşılır metriktir. |
+| **rMAD** | Error relative to variability? | Hatanın, verinin kendi dalgalanmasına oranı. Farklı hacimdeki ürünleri kıyaslamayı sağlar. |
+| **RMSE** | Punishes big misses? | Büyük hataları (Spikes) karesini alarak cezalandırır. Kritik hataların maliyetli olduğu durumlar için. |
+| **MAPE** | Percentage errors? | (Opsiyonel) Yüzdesel hata. Ancak 0 satış olan günlerde tanımsız olduğu için dikkatli kullanılmalı. |
+
+---
+
+## 🧪 3. MLflow ile Deney Takibi (Experiment Tracking)
+
+Modelleri hafızamızda veya Excel tablolarında tutmak yerine, **MLflow**'u "Tek Doğruluk Kaynağı" (Single Source of Truth) olarak kullanıyoruz.
+
+* **Log Hyperparameters:** `learning_rate`, `max_depth`, `layers`, `dropout` gibi ayarları kaydeder.
+* **Log Metrics:** Her epoch veya iterasyon sonunda MAE, RMSE skorlarını kaydeder.
+* **Log Artifacts:** Tahmin grafiklerini (Plots) ve model dosyalarını (`.pkl`, `.h5`) saklar.
+* **UI Comparison:** MLflow arayüzünde modelleri yan yana koyup; "Hangi parametre RMSE'yi düşürdü?" sorusuna görsel cevap ararız.
+
+---
+
+## 🔄 4. İş Akışı (High-Level Workflow)
+
+Aşağıdaki süreç, ham veriden kazanan modele giden yolu özetler.
+
+```mermaid
+graph TD
+    %% Hazırlık Aşaması
+    Data[("💾 Ham Veri<br/>(Raw Data)")] --> Prep["🛠️ Veri Hazırlığı<br/>(Prep: Split, Scale, Features)"]
+    
+    %% Modelleme Dalları
+    Prep --> TrainA["🌲 Train XGBoost<br/>(Baseline)"]
+    Prep --> TrainB["🧠 Train LSTM<br/>(Deep Learning)"]
+    
+    %% MLflow Entegrasyonu
+    TrainA -->|Log Params & Metrics| MLflow{{"🧪 MLflow Tracking Server"}}
+    TrainB -->|Log Params & Metrics| MLflow
+    
+    %% Karşılaştırma ve Karar
+    MLflow --> Compare["📊 Arayüzde Karşılaştır<br/>(Compare in UI)"]
+    Compare --> Decision{"🏆 Kazananı Seç<br/>(Pick Winner)"}
+    
+    %% İterasyon
+    Decision -->|En Düşük Hata / Lowest Error| Deploy["🚀 İterasyon & Geliştirme<br/>(Tune & Iterate)"]
+    
+    %% Stil
+    style MLflow fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    style Decision fill:#fff9c4,stroke:#fbc02d
+```
+
+### 🎯 Karar Anı: Hangi Modeli Seçmeliyim? (Decision Criteria)
+
+Model geliştirme sürecinin sonunda elimizde farklı skorlara sahip modeller (XGBoost, LSTM vb.) olacaktır. "Kazananı" seçerken tek bir matematiksel doğru yoktur; **iş hedefi (business goal)** belirleyicidir.
+
+Aşağıdaki diyagram ve tablo, hangi senaryoda hangi metriğe odaklanmanız gerektiğini özetler.
+
+#### 🧠 Karar Ağacı (Decision Tree Logic)
+
+```mermaid
+graph TD
+    Start{{"❓ İş Hedefiniz Nedir?<br/>(What is your Goal?)"}}
+    
+    %% Dallar
+    Start -->|Stok Yönetimi & Maliyet<br/>(Inventory Mgmt)| RMSE_Path[Olası büyük hatalardan korkuyorum]
+    Start -->|Genel Planlama & Raporlama<br/>(General Planning)| MAE_Path[Ortalama durumu bilmek istiyorum]
+    Start -->|Risk Yönetimi & Lojistik<br/>(Risk Mgmt)| Bias_Path[Sürekli eksik/fazla tahminden kaçınıyorum]
+    
+    %% Sonuçlar
+    RMSE_Path --> Result1("📉 Kazanan: En Düşük RMSE<br/>(Punishes Spikes)")
+    MAE_Path --> Result2("📊 Kazanan: En Düşük MAE<br/>(Easy to Interpret)")
+    Bias_Path --> Result3("⚖️ Kazanan: Bias ≈ 0<br/>(Unbiased Model)")
+    
+    %% Stil
+    style Start fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+    style Result1 fill:#ffebee,stroke:#ef5350
+    style Result2 fill:#e8f5e9,stroke:#66bb6a
+    style Result3 fill:#e3f2fd,stroke:#42a5f5
+
+```
+
+### 📋 Detaylı Strateji Tablosu
+
+| İş Hedefi (Business Goal) | Kritik Odak | Seçilecek Metrik | Neden? (Rationale) |
+| :--- | :--- | :--- | :--- |
+| **📦 Stok Yönetimi**<br>*(Inventory Management)* | **Büyük Hatalar**<br>(Outliers / Spikes) | **En Düşük RMSE** | RMSE, büyük hataların karesini alarak cezalandırır. Stok tükenmesi (stock-out) veya aşırı stok (over-stock) maliyetinin çok yüksek olduğu durumlarda, modelin "büyük ıskalamalar" yapmasını engeller. |
+| **📅 Genel Planlama**<br>*(General Planning)* | **Yorumlanabilirlik**<br>(Interpretability) | **En Düşük MAE** | "Ortalama 50 birim yanılıyoruz" demek iş birimi için anlaşılırdır. Büyük hataları RMSE kadar ağır cezalandırmaz, genel performansı yansıtır. |
+| **🛡️ Risk Yönetimi**<br>*(Risk Management)* | **Sistematik Sapma**<br>(Directional Error) | **Bias ≈ 0** | Modelin sürekli **eksik** (negatif bias) veya **fazla** (pozitif bias) tahmin yapıp yapmadığını ölçer. Hedef "Yansız" (Unbiased) bir modeldir. |
