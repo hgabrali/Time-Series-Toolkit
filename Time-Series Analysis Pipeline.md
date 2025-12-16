@@ -167,4 +167,4 @@ RNN'in "Unutkanlık" sorununa çözümdür. Hücre içinde **4 Temel Bileşen** 
 > **Expert Insight:** Modern zaman serisi problemlerinde (özellikle Retail ve Finans), verinin hem **döngüsel** (mevsimsellik) hem de **kaotik** (şoklar) doğasını yakalamak için LSTM veya Transformer tabanlı mimariler fiili standarttır.
 
 
-(https://github.com/hgabrali/Time-Series-Toolkit/blob/main/Sprint_3:%20Model%20Evaluation%20for%20Time-Series%20Forecasting.md)
+[# 📈 Model Evaluation for Time-Series Forecasting](https://github.com/hgabrali/Time-Series-Toolkit/blob/main/Sprint_3:%20Model%20Evaluation%20for%20Time-Series%20Forecasting.md)
