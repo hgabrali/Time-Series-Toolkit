@@ -639,3 +639,617 @@ Bu XGBoost modeli **"Tutucu" (Conservative)** bir modeldir:
 1.  **Negatif Bias:** Risk almaktan kaçınıyor ve talebi olduğundan az tahmin ediyor.
 2.  **Yüksek RMSE:** Beklenmedik talep patlamalarını (Outliers) tahmin etmekte zorlanıyor.
 3.  **Sonuç:** Model şu haliyle "Otomatik Sipariş" sistemine bağlanırsa **stoksuz kalma (stock-out)** sorunları yaşanır. Modelin hiperparametreleri, ani yükselişleri (spikes) daha iyi yakalayacak şekilde optimize edilmelidir.
+
+# 📉 Model Evaluation Case Study: The Metric Paradox
+
+Zaman serisi tahminlemesinde sıkça karşılaşılan bir yanılgı şudur: "En düşük hataya sahip model en iyisidir." Ancak bu vaka analizi, farklı metriklerin (MAPE, RMSE, MAD) birbirleriyle nasıl çelişebileceğini ve her birinin aslında verinin farklı bir istatistiksel özelliğini (Mean, Median, Mode) optimize ettiğini kanıtlamaktadır.
+
+Bu çalışma, Nicolas Vandeput'un *Data Science for Supply Chain Forecasting* kitabındaki ünlü örneğe dayanmaktadır.
+
+---
+
+## 1. Veri Seti ve Senaryo
+
+Elimizde 5 haftalık, oldukça dalgalı (volatile) günlük satış verileri var. Veri seti 1 ile 20 arasında değişen, ani yükselişler (spikes) içeren bir yapıya sahip.
+
+### 📅 Günlük Satış Verileri (Actual Demand)
+
+| Gün | W1 | W2 | W3 | W4 | W5 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Pzt** | 3 | 3 | 4 | 1 | 5 |
+| **Sal** | 1 | 4 | 1 | 2 | 2 |
+| **Çar** | 5 | 5 | 1 | 1 | 12 |
+| **Per** | 20 | 4 | 3 | 2 | 1 |
+| **Cum** | 13 | 16 | 14 | 5 | 20 |
+
+
+### 🔮 Tahmin Senaryoları (Forecast Scenarios)
+Karmaşık algoritmalar yerine, üç farklı "sabit" tahmin (naive constant forecasts) stratejisini test ediyoruz:
+
+1.  **Forecast #1 (Low):** Günde sabit **2 adet**.
+2.  **Forecast #2 (Medium):** Günde sabit **4 adet**.
+3.  **Forecast #3 (High):** Günde sabit **6 adet**.
+
+---
+
+## 2. Metrik Karşılaştırması ve Sonuçlar
+
+Her bir tahmin senaryosu için **Bias**, **MAPE**, **MAD (MAE)** ve **RMSE** hesaplandığında ortaya şaşırtıcı bir tablo çıkıyor. Hiçbir tahmin, tüm metriklerde "kazanan" değildir.
+
+| Metrik | Forecast #1 (Tahmin: 2) | Forecast #2 (Tahmin: 4) | Forecast #3 (Tahmin: 6) |
+| :--- | :--- | :--- | :--- |
+| **Bias** | -3.9 (Çok Eksik) | -1.9 (Eksik) | **0.1 (Unbiased - En İyi) 🏆** |
+| **MAPE** | **64% (En İyi) 🏆** | 109% | 180% (En Kötü) |
+| **MAD** | 4.4 | **4.1 (En İyi) 🏆** | 4.8 |
+| **RMSE** | 7.1 (En Kötü) | 6.2 | **5.9 (En İyi) 🏆** |
+
+---
+
+## 3. 🧠 Teknik Derinlemesine Analiz: Neden Böyle Oldu?
+
+Bu tablo, veri bilimindeki temel optimizasyon kurallarının canlı kanıtıdır. İşte her metriğin neden farklı bir kazanan seçtiğinin teknik açıklaması:
+
+### A. Neden RMSE, Forecast #3'ü (6 adet) Seçti?
+* **Matematiksel İlke:** RMSE (Root Mean Squared Error), hataların karesini alır. Bu işlem, büyük hataları (outliers) aşırı cezalandırır. Hatayı minimize etmek için RMSE, istatistiksel olarak **Ortalama'ya (Mean)** yakınsamaya çalışır.
+* **Vaka:** Veri setinin aritmetik ortalaması yaklaşık **5.92**'dir. Bu değere en yakın tahmin **Forecast #3 (6)** olduğu için RMSE burada en düşük çıkar.
+* **Mesaj:** "Eğer büyük hatalardan (stok tükenmesi, krizler) korkuyorsan, ortalamaya oyna."
+
+### B. Neden MAD, Forecast #2'yi (4 adet) Seçti?
+* **Matematiksel İlke:** MAD (veya MAE), hataların mutlak değerini alır. Bu metrik, istatistiksel olarak **Medyan'a (Median)** yakınsamaya çalışır.
+* **Vaka:** Veri setindeki değerleri sıraladığımızda medyan değerin **4** olduğunu görürüz. Bu yüzden **Forecast #2 (4)**, MAD açısından rakipsizdir.
+* **Mesaj:** "Eğer istikrarlı ve dengeli bir tahmin istiyorsan, medyana oyna."
+
+### C. Neden MAPE, Forecast #1'i (2 adet) Seçti?
+* **Matematiksel İlke:** MAPE (Mean Absolute Percentage Error), asimetrik bir cezalandırma yapısına sahiptir.
+    * Gerçek satış düşük (örn: 1) iken yüksek tahmin yaparsanız (örn: 6), hata %500 olur.
+    * Gerçek satış yüksek (örn: 20) iken düşük tahmin yaparsanız (örn: 2), hata en fazla %100'e yaklaşabilir (Asla %100'ü geçemez).
+* **Sonuç:** MAPE, devasa yüzdesel hatalardan kaçınmak için **düşük tahmin yapmayı (under-forecasting)** ödüllendirir.
+* **Vaka:** Veride çok fazla "1" ve "2" gibi küçük değerler var. Forecast #3 (6) buralarda %500 hata yaparken, Forecast #1 (2) çok az hata yapar.
+* **Mesaj:** "MAPE kullanırsan modelin risk almaz, korkak davranır ve eksik tahmin yapar."
+
+---
+
+## 4. 🚀 Karar Matrisi: Hangi Senaryoda Hangi Tahmin?
+
+İş hedefine (Business KPI) göre hangi modeli seçmelisiniz?
+
+| İş Hedefi (Goal) | Önerilen Model | Neden? |
+| :--- | :--- | :--- |
+| **Maliyet Minimizasyonu** (Stoksuz kalmak çok pahalıysa) | **Forecast #3** (RMSE Winner) | Bias neredeyse 0'dır. Toplam talebi tam karşılar. Büyük talep günlerini ıskalamaz. |
+| **Denge / Stabilite** (Lojistik planlama) | **Forecast #2** (MAD Winner) | "Sıradan bir günde" en az hatayı bu model yapar. |
+| **KPI Raporlama / Düşük Stok Maliyeti** | **Forecast #1** (MAPE Winner) | Eğer yönetim sadece yüzdesel hataya bakıyorsa bu model "başarılı" görünür ama iş açısından sürekli satış kaybı (lost sales) yaratır. |
+
+> **💡 Uzman Notu:** Bu örnek, perakende talep tahminlemesinde neden sadece **MAPE** kullanılmaması gerektiğinin en güçlü kanıtıdır. MAPE'ye göre "en iyi" olan model, aslında bias'ı en yüksek ve şirkete en çok ciro kaybettiren modeldir.
+
+```mermaid
+xychart-beta
+    title "5 Haftalık Satış Talebi ve Tahmin Senaryoları"
+    x-axis [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+    y-axis "Hacim" 0 --> 20
+    line [3, 1, 5, 20, 13, 3, 4, 5, 4, 16, 4, 1, 1, 3, 14, 1, 2, 1, 2, 5, 5, 2, 12, 1, 20]
+    line [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    line [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+    line [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+```
+
+# 🎛️ Hyperparameter Tuning for Time-Series Forecasting with XGBoost
+
+
+<img width="610" height="341" alt="image" src="https://github.com/user-attachments/assets/3b74d547-f6e4-461d-a276-01660532376e" />
+
+Makine öğrenimi modellerinde başarı, sadece doğru algoritmayı seçmekle değil, o algoritmanın "ayarlarını" doğru yapmakla ilgilidir. Bu doküman, Zaman Serisi tahminlemesinde Hiperparametre Optimizasyonunun (Hyperparameter Tuning) temellerini, XGBoost özelindeki kritik ayarları ve uygulama stratejilerini detaylandırır.
+
+---
+
+## 1. Hiperparametre Nedir? (The Concept)
+
+Hiperparametreler, eğitim süreci (training process) başlamadan önce tanımlanan ayarlardır. Modelin parametrelerinden (örneğin regresyon katsayıları veya ağ ağırlıkları) farklıdırlar; çünkü model parametreleri veri üzerinden öğrenilirken, hiperparametreler mühendis tarafından **manuel olarak** veya **deneysel yollarla** belirlenir.
+
+### 📌 Neden Önemlidir?
+Hiperparametre optimizasyonu, bu ayarların en iyi kombinasyonunu arama sürecidir. Doğru yapıldığında:
+* Modelin doğruluğunu (accuracy) artırır.
+* Modelin genelleme yeteneğini (generalization) iyileştirir (yeni verilerde daha iyi performans).
+* Overfitting (aşırı öğrenme) veya Underfitting (eksik öğrenme) riskini dengeler.
+
+---
+
+## 2. XGBoost Hiperparametreleri (Deep Dive)
+
+XGBoost (Extreme Gradient Boosting), yapılandırılmış/tablo verileri için endüstri standardı haline gelmiş güçlü bir algoritmadır. Zaman serisi tahminlemesini bir **regresyon problemi** olarak kurguladığımızda, aşağıdaki hiperparametreler kritik rol oynar.
+
+### A. Temel Yapılandırıcılar
+
+#### 🐢 Learning Rate (`eta`)
+Her iterasyonda modelin parametrelerini ne kadar güncelleyeceğini kontrol eder. Hataları minimize etme yolunda atılan adımın büyüklüğüdür.
+* **Düşük Değer (örn: 0.01):** Model yavaş ama emin adımlarla öğrenir. Daha güvenlidir ancak converge olması (yakınsaması) uzun sürer.
+* **Yüksek Değer (örn: 0.3):** Öğrenmeyi hızlandırır ancak optimum noktayı ıskalama (overshoot) riski taşır.
+> **✅ Uzman İpucu:** Genellikle düşük bir öğrenme oranı (`eta`) ile yüksek sayıda ağaç (`n_estimators`) kullanmak, genelleme yeteneğini artırır.
+
+#### 🌳 Number of Estimators (`n_estimators`)
+Kurulacak olan ağaç sayısıdır (boosting rounds).
+* **Çok Az:** Underfitting riski.
+* **Çok Fazla:** Overfitting riski (eğer early stopping kullanılmazsa).
+
+#### 🌲 Max Depth (`max_depth`)
+Her bir ağacın ne kadar derinleşebileceğini (karmaşıklaşabileceğini) sınırlar.
+* **Düşük Derinlik:** Daha basit modeller (Bias yüksek, Varyans düşük).
+* **Yüksek Derinlik:** Model veriyi ezberleyebilir (Overfitting riski). Zaman serilerinde genelde 3-10 arası değerler denenir.
+
+### B. Stokastik (Rastgelelik) Parametreleri
+
+Bu parametreler, her ağaçta verinin veya özelliklerin sadece bir kısmını kullanarak modelin gürültüye (noise) karşı direncini artırır.
+
+#### 🎲 Subsample
+Her boosting turunda eğitim verisinin ne kadarının (% olarak) kullanılacağını belirler.
+* Örn: `0.8` -> Her ağaç verinin %80'i ile eğitilir.
+
+#### 📊 Colsample_bytree
+Her ağaç oluşturulurken özelliklerin (sütunların) ne kadarının kullanılacağını belirler.
+* Özellikle çok fazla feature (lag, rolling window vb.) ürettiğinizde kritiktir.
+
+### C. İleri Seviye Regularization (Uzman Bölümü) 🚀
+
+Metinde yer almayan ancak profesyonel modellemede hayati olan parametreler:
+
+#### ⚖️ Min Child Weight (`min_child_weight`)
+Bir yaprak düğümde (leaf node) olması gereken minimum örneklem ağırlığı toplamıdır.
+* **Amaç:** Gürültülü verilerde overfitting'i engellemek. Yüksek değerler modeli daha muhafazakar yapar.
+
+#### 🛡️ Gamma (`min_split_loss`)
+Bir dalın daha fazla bölünmesi için gereken minimum kayıp düşüşüdür (loss reduction). Modelin gereksiz karmaşıklığa girmesini engeller.
+
+#### 🧲 Reg Alpha (`alpha`) & Reg Lambda (`lambda`)
+* **Alpha (L1 Regularization):** Özellik seçiminde etkilidir, gereksiz katsayıları sıfıra çeker.
+* **Lambda (L2 Regularization):** Büyük katsayıları cezalandırarak modelin istikrarını sağlar.
+
+---
+
+## 3. Optimizasyon Stratejisi (Workflow)
+
+Zaman serisi verilerinde hiperparametre araması yaparken standart yöntemler (Shuffle Split) kullanılamaz. Süreç şöyle işler:
+
+### 1️⃣ Grid (Arama Uzayı) Belirleme
+Hangi hiperparametreleri ve hangi değer aralıklarını deneyeceğimizi tanımlarız.
+
+### 2️⃣ Cross-Validation (Zaman Duyarlı)
+Standart K-Fold yerine **`TimeSeriesSplit`** kullanılır.
+* Gelecek verisi geçmişi eğitmek için kullanılamaz (Data Leakage önlenir).
+* Eğitim seti genişleyen pencere (expanding window) mantığıyla büyür.
+
+### 3️⃣ Arama Yöntemi (Search Method)
+Grid üzerinde en iyi kombinasyonu bulmak için kullanılan algoritmadır.
+
+---
+
+## 🆚 Karşılaştırma: Arama Yöntemleri
+
+Hangi durumda hangi optimizasyon tekniğini kullanmalısınız?
+
+| Yöntem | Açıklama | Avantaj | Dezavantaj | Kullanım Yeri |
+| :--- | :--- | :--- | :--- | :--- |
+| **Grid Search** | Belirlenen tüm kombinasyonları tek tek dener. | En iyi sonucu bulmayı garanti eder (grid içinde). | Çok yavaştır. Kombinasyon sayısı arttıkça süre üssel artar. | Az sayıda parametre ve küçük veri setleri. |
+| **Random Search** | Kombinasyonlar arasından rastgele seçimler yapar. | Çok daha hızlıdır. Grid Search kadar iyi sonuçları çok daha kısa sürede bulabilir. | En iyi kombinasyonu şans eseri ıskalayabilir. | **XGBoost gibi çok parametreli modellerde başlangıç için.** |
+| **Bayesian Optimization** (Optuna/Hyperopt) | Önceki denemelerden öğrenerek (probabilistic) bir sonraki denemeyi akıllıca seçer. | En verimli yöntemdir. Daha az denemeyle daha iyi sonuca ulaşır. | Kurulumu ve mantığı biraz daha karmaşıktır. | Kaggle yarışmaları ve Prodüksiyon seviyesi modeller. |
+
+---
+
+## 🐍 Örnek Kod Şablonu (Python)
+
+Aşağıda `RandomizedSearchCV` ve `TimeSeriesSplit` kullanılarak yapılan bir optimizasyon örneği verilmiştir:
+
+```python
+from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
+import xgboost as xgb
+
+# 1. Model
+model = xgb.XGBRegressor(objective='reg:squarederror')
+
+# 2. Hiperparametre Uzayı (Grid)
+param_grid = {
+    'learning_rate': [0.01, 0.05, 0.1, 0.2],
+    'max_depth': [3, 5, 7, 10],
+    'min_child_weight': [1, 3, 5],
+    'subsample': [0.6, 0.8, 1.0],
+    'colsample_bytree': [0.6, 0.8, 1.0],
+    'n_estimators': [100, 500, 1000]
+}
+
+# 3. Zaman Serisi CV
+tscv = TimeSeriesSplit(n_splits=5)
+
+# 4. Arama
+random_search = RandomizedSearchCV(
+    estimator=model,
+    param_distributions=param_grid,
+    n_iter=50, # 50 farklı kombinasyon dene
+    scoring='neg_mean_squared_error', # RMSE hedefli
+    cv=tscv,
+    verbose=1,
+    n_jobs=-1
+)
+
+# random_search.fit(X_train, y_train)
+```
+
+# 🧠 (Advanced) Hyperparameter Tuning for LSTM Time-Series Forecasting
+
+LSTM (Long Short-Term Memory) ağları, sıralı veriler (sequential data) ve zaman serisi tahminlemeleri için tasarlanmış özel bir Tekrarlayan Sinir Ağı (RNN) türüdür. Modelin "hafızası" sayesinde geçmişteki kalıpları (patterns) uzun süre saklayabilir. Ancak, LSTM'ler hesaplama açısından maliyetlidir ve doğru hiperparametreleri bulmak, modelin başarısı için kritiktir.
+
+Bu doküman, LSTM modellerini optimize ederken kullanılan ileri seviye teknikleri, veri hazırlık süreçlerini ve Grid Search stratejilerini adım adım açıklar.
+
+---
+
+## 🎛️ 1. Kritik LSTM Hiperparametreleri
+
+LSTM'in performansını doğrudan etkileyen "ayar düğmeleri" şunlardır:
+
+| Hiperparametre | Açıklama ve Etkisi |
+| :--- | :--- |
+| **Number of Layers** (Katman Sayısı) | Modelin derinliğini belirler. Genellikle 1 veya 2 katman yeterlidir. Daha fazlası karmaşık desenleri öğrenebilir ancak overfitting riski artar. |
+| **Units per Layer** (Nöron Sayısı) | Her katmandaki LSTM hücresi sayısıdır (örn: 64, 128). Modelin "kapasitesini" (öğrenme gücünü) belirler. |
+| **Batch Size** (Yığın Boyutu) | Modelin ağırlıklarını güncellemeden önce gördüğü örnek sayısıdır. Küçük batch (örn: 32) gürültülü ama genelleştirici, büyük batch (örn: 256) hızlı ama ezberci olabilir. |
+| **Learning Rate** (Öğrenme Oranı) | Gradyan inişi (gradient descent) sırasında atılan adımın büyüklüğü. Çok büyükse model yakınsamaz, çok küçükse eğitim bitmez. |
+| **Dropout Rate** | Her eğitim adımında nöronların rastgele %X kadarını kapatır. **Overfitting'i engellemek için en kritik parametredir.** |
+| **Sequence Length** (Pencere Boyutu) | Modelin geçmişe ne kadar bakacağı (Look-back window). Örn: Son 30 gün. |
+
+---
+
+## 🛠️ 2. Veri Hazırlığı: LSTM İçin "3D" Dönüşüm
+
+LSTM modelleri, klasik makine öğrenimi modellerinden (XGBoost vb.) farklı olarak veriyi **3 Boyutlu Tensörler** halinde bekler.
+
+### 📐 Veri Şekli (Input Shape): `(Samples, Time Steps, Features)`
+* **Samples:** Veri setindeki toplam pencere sayısı.
+* **Time Steps (Sequence Length):** Geçmişe bakılan adım sayısı (örn: 30 gün).
+* **Features:** Her adımda kullanılan değişken sayısı. (Önceki derste 1'di, şimdi 9 özellik kullanıyoruz: `sales`, `lags`, `rolling_stats` vb.)
+
+### 🔄 Adım Adım İş Akışı (Workflow)
+
+#### Adım 1: Ölçeklendirme (Scaling) - ⚠️ Kritik Uyarı!
+LSTM'ler aktivasyon fonksiyonları (Tanh/Sigmoid) kullandığı için verinin **[0, 1]** veya **[-1, 1]** aralığında olması şarttır.
+* **Kural:** Scaler (`MinMaxScaler`) sadece **Eğitim Seti (Train Set)** üzerinde `fit` edilmelidir. Test setine sadece `transform` uygulanır.
+* **Neden?** Test setindeki (gelecekteki) minimum/maksimum değerleri bilmek **Data Leakage** (Veri Sızıntısı) yaratır.
+
+#### Adım 2: Pencereleme (Windowing / Sequencing)
+Zaman serisini, modelin yiyebileceği küçük kliplere bölme işlemidir.
+* **Girdi (X):** [t-30 ... t-1] aralığındaki veriler (Özelliklerle birlikte).
+* **Hedef (y):** [t] anındaki satış değeri.
+
+```mermaid
+graph LR
+    A[Ham Veri] --> B[Train/Test Split (Kronolojik)]
+    B --> C{Scaler Fit (Sadece Train)}
+    C --> D[Transform Train & Test]
+    D --> E[Pencereleme (Sliding Window)]
+    E --> F[3D Reshape (Samples, TimeSteps, Features)]
+    F --> G[LSTM Modeli]
+
+```
+
+# 🧠 (Advanced) Hyperparameter Tuning for LSTM: Implementation
+
+LSTM modellemesinde teoriden pratiğe geçiş, titiz bir kod yapısı gerektirir. Veriyi 3 boyutlu tensörlere çevirdikten sonraki adım, farklı mimarileri sistematik olarak test etmektir.
+
+Bu doküman, dinamik model oluşturma (Model Factory), manuel Grid Search döngüsü ve sonuçların doğru raporlanması süreçlerini teknik detaylarla ele alır.
+
+---
+
+## 🏭 3. Model Fabrikası (Model Factory)
+
+Grid Search yapabilmek için, her iterasyonda farklı parametrelerle (örn: 1 katman vs 2 katman) modeli sıfırdan inşa eden bir fonksiyona ihtiyacımız vardır.
+
+### 🔑 Kritik Teknik Detay: `return_sequences`
+LSTM katmanları arasındaki bilgi akışını yöneten en önemli parametredir.
+* **`True` (Röle Yarışı):** Eğer LSTM katmanlarını üst üste diziyorsanız (Stacked LSTM), alttaki katman sadece sonucu değil, tüm sürecin özetini (sequence) bir üst katmana iletmelidir.
+* **`False` (Bitiş Çizgisi):** Son LSTM katmanı, artık zaman boyutunu çökertmeli ve `Dense` katmanına tek bir özet vektör vermelidir.
+
+### 🐍 Python Uygulaması
+
+```python
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+
+def build_lstm(seq_len, n_features, n_units, n_layers, dropout_rate):
+    """
+    Verilen hiperparametrelerle dinamik bir LSTM modeli oluşturur.
+    """
+    model = Sequential()
+    
+    # --- İlk LSTM Katmanı ---
+    # input_shape=(zaman_adımı, özellik_sayısı) sadece ilk katmanda belirtilir.
+    # Eğer n_layers > 1 ise, bir sonraki katmana sequence aktarmalıyız (True).
+    model.add(LSTM(n_units, 
+                   input_shape=(seq_len, n_features), 
+                   return_sequences=(n_layers > 1)))
+    model.add(Dropout(dropout_rate))
+    
+    # --- Ara Katmanlar (Varsa) ---
+    for i in range(1, n_layers):
+        # Eğer bu son katmansa False, değilse True döndür
+        is_last_layer = (i == n_layers - 1)
+        model.add(LSTM(n_units, return_sequences=not is_last_layer))
+        model.add(Dropout(dropout_rate))
+        
+    # --- Çıkış Katmanı ---
+    # Regresyon problemi olduğu için tek bir nöron (Linear activation)
+    model.add(Dense(1))
+    
+    # Modeli derle
+    model.compile(optimizer='adam', loss='mse')
+    return model
+```
+
+# 🔍 4. Grid Search Stratejisi (The Tiny Grid-Search)
+
+Derin öğrenme modellerinde (Deep Learning) her kombinasyonu denemek ("Brute Force") maliyetli ve zaman alıcıdır. Bu nedenle, `sklearn` kütüphanesindeki standart `GridSearchCV` yerine, **manuel ve kontrollü döngüler** tercih edilir.
+
+Bu yaklaşımın en büyük avantajı, **farklı pencere boyutlarını (`seq_len`)** test edebilme esnekliğidir. Standart yöntemler genellikle sabit bir giriş boyutu ($X$) beklerken, biz burada her iterasyonda veriyi yeniden şekillendireceğiz.
+
+---
+
+## 🎯 Arama Uzayı (Search Space)
+
+Aşağıdaki hiperparametreler, modelin kapasitesini ve hafıza derinliğini belirleyen en kritik oyunculardır:
+
+| Hiperparametre | Değerler | Amaç |
+| :--- | :--- | :--- |
+| **`seq_len`** (Window) | `[30, 60]` | Geçmişe ne kadar bakacağız? (Kısa vade vs Uzun vade) |
+| **`n_units`** | `[64, 128]` | Modelin öğrenme kapasitesi ne olacak? |
+| **`n_layers`** | `[1, 2]` | Model ne kadar derin (soyutlama yeteneği) olacak? |
+
+**Toplam:** $2 \times 2 \times 2 = 8$ farklı model eğitimi gerçekleştirilecek.
+
+---
+
+## 🚀 Gelişmiş Eğitim Döngüsü (Python Implementation)
+
+Aşağıdaki kod bloğu, `itertools` kullanarak temiz bir döngü oluşturur, her adımda veriyi yeniden hazırlar, `EarlyStopping` ile zaman tasarrufu sağlar ve en iyi modeli hafızada tutar.
+
+> **💡 Uzman İpucu:** `seq_len` değiştiğinde `X` ve `y` matrislerinin boyutu değişir. Bu yüzden `make_sequences` fonksiyonu döngünün *içinde* çağrılmalıdır.
+
+```python
+import itertools
+import numpy as np
+from tensorflow.keras.callbacks import EarlyStopping
+from sklearn.metrics import mean_absolute_error
+
+# 1. Parametre Grid'i
+param_grid = {
+    'seq_len': [30, 60],
+    'n_units': [64, 128],
+    'n_layers': [1, 2]
+}
+
+# 2. En iyi skoru takip etmek için değişkenler
+best_mae = float('inf')
+best_params = {}
+best_model = None
+
+# 3. Kombinasyonları oluştur (itertools ile temiz kod)
+keys, values = zip(*param_grid.items())
+combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+
+print(f"Toplam {len(combinations)} farklı model test edilecek.\n")
+
+# --- GRID SEARCH DÖNGÜSÜ ---
+for params in combinations:
+    print(f"Testing: {params} ...", end=" ")
+    
+    # A. Veriyi Dinamik Hazırla (KRİTİK ADIM)
+    # seq_len değiştiği için X ve y her turda yeniden oluşturulmalı.
+    # make_sequences fonksiyonu önceki adımlardan gelmektedir.
+    X_train_seq, y_train_seq = make_sequences(train_scaled, params['seq_len'])
+    X_test_seq, y_test_seq = make_sequences(test_scaled, params['seq_len'])
+    
+    # B. Model Fabrikasını Çağır
+    model = build_lstm(
+        seq_len=params['seq_len'], 
+        n_features=X_train_seq.shape[2], # Genellikle 9 feature
+        n_units=params['n_units'],
+        n_layers=params['n_layers'],
+        dropout_rate=0.2
+    )
+    
+    # C. Callback (Erken Durdurma)
+    # restore_best_weights=True: Model overfitting'e başladığı anı değil, en iyi anı hatırlar.
+    es = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+    
+    # D. Modeli Eğit
+    # verbose=0 yaparak konsolu kirletmiyoruz, sadece sonuçları basacağız.
+    history = model.fit(
+        X_train_seq, y_train_seq, 
+        validation_split=0.1, # Eğitim verisinin %10'u validasyon için
+        epochs=40, 
+        batch_size=32, 
+        callbacks=[es], 
+        verbose=0
+    )
+    
+    # E. Değerlendir (Evaluation)
+    # 1. Tahmin yap (Sonuçlar [0,1] arasındadır)
+    preds_scaled = model.predict(X_test_seq, verbose=0)
+    
+    # 2. Ters Dönüşüm (Inverse Transform)
+    # Scaler, çok değişkenli (multivariate) olduğu için dummy (boş) sütun hilesi gerekebilir.
+    # Burada basitleştirilmiş bir inverse işlemi varsayıyoruz:
+    # (Gerçek projede 'inverse_transform_helper' gibi bir fonksiyona ihtiyaç vardır)
+    preds_real = scaler_target.inverse_transform(preds_scaled) 
+    y_test_real = scaler_target.inverse_transform(y_test_seq)
+    
+    # 3. Skoru Hesapla
+    current_mae = mean_absolute_error(y_test_real, preds_real)
+    print(f"MAE: {current_mae:.2f}")
+    
+    # F. En İyiyi Kaydet (Winner Takes All)
+    if current_mae < best_mae:
+        best_mae = current_mae
+        best_params = params
+        best_model = model # En iyi modelin ağırlıklarını sakla
+
+print("-" * 30)
+print(f"🏆 EN İYİ SONUÇ: MAE = {best_mae:.2f}")
+print(f"⚙️ EN İYİ PARAMETRELER: {best_params}")
+```
+
+## 🛠️ Teknik Derinlemesine Analiz: Kod Neden Çalışıyor?
+
+Yazdığımız Grid Search döngüsü basit görünse de, arka planda zaman serisi modellemesinin en temel matematiksel ve lojistik problemlerini çözer. İşte bu kodun başarısının altındaki 3 temel mekanizma:
+
+### 1. 🔄 Dinamik Veri Üretimi (`make_sequences`)
+LSTM modellerinde veri sabit bir matris değildir; seçilen pencere boyutuna (`seq_len`) göre şekil alan "akışkan" bir yapıdır.
+
+* **Matematiksel Gerçek:** Bir zaman serisinde örneklem sayısı ($N$) ile pencere boyutu ($w$) arasında ters orantı vardır:
+  $$\text{Sample Count} = N - w$$
+* **Senaryo:**
+    * 1000 günlük veride **30 gün** pencere kullanırsanız: $1000 - 30 = 970$ satır veri oluşur.
+    * 1000 günlük veride **60 gün** pencere kullanırsanız: $1000 - 60 = 940$ satır veri oluşur.
+* **Çözüm:** Bu yüzden `X` ve `y` matrislerini döngünün dışında sabit tutamayız. Her iterasyonda, yeni `seq_len` değerine göre veriyi yeniden "dilimlememiz" (slicing) gerekir.
+
+### 2. 🛑 EarlyStopping'in Gizli Gücü (`restore_best_weights=True`)
+Derin öğrenme eğitimlerinde model genellikle bir noktadan sonra ezberlemeye (overfitting) başlar.
+* **Varsayılan Davranış (`False`):** Eğitim bittiğinde (veya durdurulduğunda), model hafızasında **en son epoch'un** ağırlıkları kalır. Ancak son epoch, genellikle modelin overfitting yapmaya başladığı "kötü" bir andır.
+* **Bizim Ayarımız (`True`):** Bu parametre modele bir "Zaman Makinesi" özelliği kazandırır. Eğitim dursa bile, model geçmişe döner ve doğrulama hatasının (validation loss) en düşük olduğu **"Altın Çağ"**daki (Golden Epoch) ağırlıkları geri yükler. Bu, genelleme başarısını garanti eder.
+
+### 3. 📉 Ters Dönüşüm (Inverse Transform) Zorunluluğu
+LSTM'ler, gradyanların patlamaması için `[0, 1]` aralığına sıkıştırılmış verilerle çalışır. Ancak iş birimi (business) "0.45" değerinden bir şey anlamaz.
+
+* **Sorun:** Model çıktısı normalize edilmiştir (Örn: 0.45).
+* **Gerçek:** Bu 0.45 değeri, gerçek dünyada **1500 adet satışa** denk geliyor olabilir.
+* **Çözüm:** Başarıyı (MAE/RMSE) ölçmeden önce, tahminleri mutlaka `scaler.inverse_transform()` ile orijinal birimine (satış adedine) çevirmeliyiz. Aksi takdirde 1500 birimlik hatayı 0.45 gibi görüp "Model harika çalışıyor" yanılgısına düşeriz.
+
+# 📊 5. Sonuçların Raporlanması ve "Tuzaklar"
+
+En iyi modeli bulduktan sonra yapılan en büyük hata, ölçeklenmiş (scaled) sonuçları yorumlamaya çalışmaktır. Model çıktısı `0.45` olabilir, ancak iş dünyasında bu **450 adet satış** anlamına geliyor olabilir.
+
+---
+
+## 🔄 Inverse Transform (Ters Dönüşüm)
+
+Model çıktısı genellikle `[0, 1]` arasındadır (MinMaxScaler kullanıldığı varsayılırsa). Bunu gerçek dünyaya (satış adetlerine) döndürmek için `scaler.inverse_transform()` metodu kullanılır.
+
+### ⚠️ Uzman Uyarısı: Shape Mismatch Trap (Boyut Uyuşmazlığı Tuzağı)
+
+Eğer modeliniz **"Multivariate" (Çok değişkenli)** ise, Scaler'ınız eğitim sırasında örneğin **9 sütun (feature)** görmüştür. Ancak modelinizin tahmini (`y_pred`) genellikle **tek sütundur** (sadece hedef değişken).
+
+Eğer doğrudan `scaler.inverse_transform(y_pred)` yaparsanız, **boyut hatası (ValueError)** alırsınız. Scaler, 9 sütun beklerken siz ona 1 sütun veriyorsunuzdur.
+
+#### ✅ Çözüm: Dummy Features ile Tamamlama
+`y_pred` vektörünün yanına 8 tane boş (veya sıfır) sütun ekleyip transform işlemini yapın, ardından sadece ilgilendiğiniz ilk sütunu geri alın.
+
+```python
+import numpy as np
+
+# Örnek: y_pred (Model Tahmini) -> (100, 1) boyutunda
+# Scaler eğitimde 9 feature kullandıysa:
+
+# 1. 9 sütunlu boş bir matris oluştur
+# (Shape: [tahmin_sayisi, feature_sayisi])
+dummy_features = np.zeros((len(y_pred), 9))
+
+# 2. İlk sütuna tahminleri yerleştir (Target değişkeniniz ilk sıradaysa)
+dummy_features[:, 0] = y_pred.flatten()
+
+# 3. Inverse Transform uygula
+rescaled_matrix = scaler.inverse_transform(dummy_features)
+
+# 4. Sadece gerçek tahmin sütununu çek
+final_predictions = rescaled_matrix[:, 0]
+
+```
+
+# 🩺 Sağlık Kontrolü (Diagnostics) & Model Validasyonu
+
+Model eğitimi bittikten sonra alınan sayısal skor (MAE/RMSE) tek başına yeterli değildir. Modelin davranışsal olarak sağlıklı olup olmadığını anlamak için "Teşhis" (Diagnostics) aşaması uygulanmalıdır.
+
+Bu aşamada aşağıdaki kontrolleri adım adım uygulayın:
+
+---
+
+## 1. 📈 Görsel Kontrol (Visual Inspection)
+
+Sayılar yalan söyleyebilir ama grafikler (genellikle) söylemez. Tahmin edilen (`y_pred`) ve gerçek (`y_test`) değerleri aynı eksende çizdirin.
+
+### 🔍 Neye Bakmalıyız?
+1.  **Pik Noktaları (Peak Capture):**
+    * *Soru:* Gerçek verideki ani sıçramaları (örneğin kampanya günleri) model yakalayabiliyor mu? Yoksa ortalamadan güvenli bir düz çizgi mi çekiyor?
+2.  **Faz Kayması (Phase Shift / Lagging):** ⚠️ *Kritik Kontrol*
+    * *Soru:* Tahmin çizgisi, gerçek çizgiyi "takip mi ediyor"?
+    * *Tehlike:* LSTM bazen tembellik yapar ve $t$ anını tahmin etmek için sadece $t-1$ değerini kopyalar. Grafikte çizgiler uyumlu görünür ama aslında model sadece **1 adım geriden geliyordur.** Bunu anlamak için grafiğe "zoom" yapın.
+
+```python
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(15, 6))
+plt.plot(y_test_real, label='Gerçek (Actual)', color='black', alpha=0.7)
+plt.plot(preds_real, label='Tahmin (Prediction)', color='red', linestyle='--')
+plt.title('LSTM Model: Gerçek vs Tahmin')
+plt.legend()
+plt.show()
+```
+
+## 2. 📉 Hata Metrikleri Analizi (Error Metrics Analysis)
+
+Sadece genel ortalamaya bakmak yanıltıcıdır. Hatayı parçalara ayırın (decompose the error):
+
+* **MAE (Mean Absolute Error):** "Ortalama kaç adet ürün yanılıyoruz?" (Yöneticilerin anlayacağı dildir / Business friendly language).
+* **Bias (Yanlılık):**
+    * $\text{Bias} > 0$: Model sürekli fazla tahmin ediyor (Stok şişkinliği riski / **Overstock risk**).
+    * $\text{Bias} < 0$: Model sürekli eksik tahmin ediyor (Stoksuz kalma / **Stockout** - Müşteri kaybı riski / **Lost sales risk**).
+    * **Hedef (Goal):** Bias'ın 0'a yakın olmasıdır.
+
+---
+
+## 3. 🏎️ Benchmark (Kıyaslama) Testi
+
+"Karmaşıklığın Maliyeti" (**Cost of Complexity**) ilkesi gereği, oluşturduğunuz Derin Öğrenme (Deep Learning) modeli kendinden daha basit modellerden belirgin şekilde iyi olmalıdır.
+
+Aşağıdaki modellerle kıyaslayın:
+
+1.  **Naive Model:** "Yarınki satış, bugünkü satışla aynıdır" diyen model. LSTM bunu bile geçemiyorsa model çöp demektir.
+2.  **Moving Average (Hareketli Ortalama):** Son 7 günün ortalaması.
+3.  **XGBoost / LightGBM:** Eğitimi çok daha hızlı olan ağaç tabanlı modeller (**Tree-based models**).
+
+> **Karar Kuralı (Decision Rule):** Eğer LSTM, XGBoost'tan sadece %1 daha iyiyse ama eğitimi 10 kat uzun sürüyorsa; **XGBoost'u seçin.**
+
+---
+
+### 💡 Uzman Notu: Hibrit Modeller (Hybrid / Ensemble Models)
+
+Zaman serisi yarışmalarında (Kaggle, M5 Forecasting vb.) tek bir modelin kazandığı nadir görülür. Genellikle **Ensemble (Topluluk)** yöntemleri kullanılır.
+
+* **LSTM:** Trendleri (yönü) ve uzun vadeli döngüsel hareketleri öğrenmekte çok başarılıdır (**Smooth predictions** - Pürüzsüz tahminler).
+* **XGBoost:** Ani şokları, özel günleri ve aykırı değerleri (**Outliers**) yakalamakta daha keskindir (**Sharp predictions** - Keskin tahminler).
+
+#### 🚀 Çözüm: Ağırlıklı Ortalama Topluluğu (Weighted Average Ensemble)
+
+İki dünyanın en iyisini birleştirmek için tahminlerin ağırlıklı ortalamasını alın:
+
+```python
+# Basit bir Ensemble örneği (Simple Ensemble Example)
+lstm_preds = model_lstm.predict(X_test)
+xgb_preds = model_xgb.predict(X_test)
+
+# Ağırlıklar Deneme-Yanılma (Trial & Error) veya Optimizasyonla bulunur
+final_preds = (0.5 * lstm_preds) + (0.5 * xgb_preds)
+
+```
+
+### 🎨 Ensemble Logic
+
+Aşağıdaki diyagram, LSTM ve XGBoost modellerinin güçlü yanlarını birleştiren hibrit yapıyı göstermektedir.
+
+```mermaid
+graph TD
+    Data[Veri Seti / Dataset] --> LSTM[LSTM Modeli]
+    Data --> XGB[XGBoost Modeli]
+    
+    LSTM -- "Trendi Yakalar (Captures Trend)" --> P1[Tahmin A]
+    XGB -- "Pikleri Yakalar (Captures Peaks)" --> P2[Tahmin B]
+    
+    P1 --> Mix{Ensemble<br/>(Ortalama / Average)}
+    P2 --> Mix
+    
+    Mix --> Final[🚀 Daha Kararlı & Güçlü Tahmin<br/>(Robust Prediction)]
+
+```
