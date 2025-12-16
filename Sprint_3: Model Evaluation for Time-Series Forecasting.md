@@ -1251,7 +1251,7 @@ graph TD
     P2 --> Mix
     
     Mix --> Final["🚀 Daha Kararlı & Güçlü Tahmin<br/>(Robust Prediction)"]
-
+```
 
 # 🧪 Experiment Tracking with MLflow
 
@@ -1298,21 +1298,23 @@ graph TD
 
 
 ### 🏗️ 2. How We'll Run It (Çalışma Mimarisi)
-MLflow'u çalıştırmanın iki yolu vardır. Aşağıdaki akış şeması, Local (Yerel) ve Google Colab ortamları arasındaki kurulum farkını gösterir.
 
+MLflow'u çalıştırmanın iki yolu vardır. Aşağıdaki akış şeması, **Local (Yerel)** ve **Google Colab** ortamları arasındaki kurulum farkını gösterir.
+
+```mermaid
 flowchart LR
-    subgraph Local_Env ["💻 Local Environment"]
+    subgraph Local_Env ["💻 Yerel Ortam (Local Environment)"]
         direction TB
-        L_NB[Local Notebook] -->|Logs to| L_Disk[("💾 Local Disk<br/>(./mlruns)")]
-        L_Disk -->|Reads| L_UI["🖥️ MLflow UI Server<br/>(localhost:5000)"]
+        L_NB["Local Notebook"] -->|"Kaydeder (Logs to)"| L_Disk[("💾 Yerel Disk / Local Disk<br/>(./mlruns)")]
+        L_Disk -->|"Okur (Reads)"| L_UI["🖥️ MLflow UI Server<br/>(localhost:5000)"]
     end
 
-    subgraph Cloud_Env ["☁️ Google Colab Setup"]
+    subgraph Cloud_Env ["☁️ Google Colab Kurulumu"]
         direction TB
-        C_NB[Colab Notebook] -->|Mounts & Logs| GDrive[("📁 Google Drive<br/>(Storage)")]
-        GDrive -->|Reads| C_UI["🖥️ MLflow UI (Background)"]
-        C_UI -.->|Tunneling| Ngrok["🔗 ngrok Service"]
-        Ngrok -->|Public URL| User((User/Data Scientist))
+        C_NB["Colab Notebook"] -->|"Bağlar & Kaydeder<br/>(Mounts & Logs)"| GDrive[("📁 Google Drive<br/>(Storage)")]
+        GDrive -->|"Okur (Reads)"| C_UI["🖥️ MLflow UI (Background)"]
+        C_UI -.->|"Tünelleme (Tunneling)"| Ngrok["🔗 ngrok Service"]
+        Ngrok -->|"Public URL"| User(("Kullanıcı<br/>(Data Scientist)"))
     end
 
     %% Stil
@@ -1320,17 +1322,21 @@ flowchart LR
     style Cloud_Env fill:#e3f2fd,stroke:#1565c0
     style Ngrok fill:#fff3e0,stroke:#ef6c00,stroke-dasharray: 5 5
 
+```
+
 ### 🗺️ 3. Roadmap for Using MLflow (Uygulama Yol Haritası)
+
 Projede MLflow'u entegre ederken izleyeceğimiz 5 adımlı süreç:
 
+```mermaid
 graph TD
-    Step1("1️⃣ Install & Setup<br/>(pip install mlflow)") 
-    --> Step2("2️⃣ Start Experiment<br/>Log a Simple Baseline Model")
-    --> Step3("3️⃣ Iterate & Scale<br/>Add ARIMA, SARIMA, XGBoost, LSTM")
-    --> Step4("4️⃣ Compare Runs<br/>Open UI & Analyze Side-by-Side")
-    --> Step5("5️⃣ Artifact Management<br/>Save Best Plots & Models")
+    Step1["1️⃣ Kurulum & Ayarlar<br/>(Install & Setup)"] 
+    --> Step2["2️⃣ Deneyi Başlat<br/>(Start Experiment - Simple Model)"]
+    --> Step3["3️⃣ Yinele & Ölçekle<br/>(Iterate: ARIMA, XGBoost, LSTM)"]
+    --> Step4["4️⃣ Karşılaştır<br/>(Compare Runs via UI)"]
+    --> Step5["5️⃣ Model Yönetimi<br/>(Artifact Management)"]
 
-    %% Stil
+    %% Stil - Renk geçişleri (Gradient Style)
     style Step1 fill:#f3e5f5,stroke:#4a148c
     style Step2 fill:#e1bee7,stroke:#4a148c
     style Step3 fill:#ce93d8,stroke:#4a148c
