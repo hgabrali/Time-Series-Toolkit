@@ -915,6 +915,8 @@ Zaman serisini, modelin yiyebileceği küçük kliplere bölme işlemidir.
 * **Girdi (X):** [t-30 ... t-1] aralığındaki veriler (Özelliklerle birlikte).
 * **Hedef (y):** [t] anındaki satış değeri.
 
+  
+
 ```mermaid
 graph LR
     A[Ham Veri] --> B[Train/Test Split (Kronolojik)]
@@ -924,6 +926,9 @@ graph LR
     E --> F[3D Reshape (Samples, TimeSteps, Features)]
     F --> G[LSTM Modeli]
 ```
+
+---
+
 
 # 🧠 (Advanced) Hyperparameter Tuning for LSTM: Implementation
 
