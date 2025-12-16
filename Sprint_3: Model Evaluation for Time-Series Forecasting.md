@@ -919,15 +919,13 @@ Zaman serisini, modelin yiyebileceği küçük kliplere bölme işlemidir.
 
 ```mermaid
 graph LR
-    A[Ham Veri] --> B[Train/Test Split (Kronolojik)]
-    B --> C{Scaler Fit (Sadece Train)}
-    C --> D[Transform Train & Test]
-    D --> E[Pencereleme (Sliding Window)]
-    E --> F[3D Reshape (Samples, TimeSteps, Features)]
-    F --> G[LSTM Modeli]
-```
+    A["Ham Veri"] --> B["Train/Test Split (Kronolojik)"]
+    B --> C{"Scaler Fit (Sadece Train)"}
+    C --> D["Transform Train & Test"]
+    D --> E["Pencereleme (Sliding Window)"]
+    E --> F["3D Reshape (Samples, TimeSteps, Features)"]
+    F --> G["LSTM Modeli"]
 
----
 
 
 # 🧠 (Advanced) Hyperparameter Tuning for LSTM: Implementation
