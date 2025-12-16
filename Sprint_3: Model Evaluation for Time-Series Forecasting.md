@@ -1865,3 +1865,205 @@ graph TD
 ```
 
 💡 **Uzman Notu:** Eğer XGBoost ve LSTM benzer performans gösteriyorsa, her zaman daha basit ve hızlı olanı (XGBoost) seçin. Karmaşıklık (Complexity) sadece belirgin bir performans artışı sağlıyorsa haklı çıkarılabilir.
+
+# 📝 Quiz 6: Solutions & Technical Analysis
+**(XGBoost Hyperparameters & MLflow Experiment Tracking)**
+
+Bu doküman, Makine Öğrenimi modellerinin optimizasyonu ve takibi ile ilgili temel kavramları pekiştirmek amacıyla hazırlanan 6. Quiz'in detaylı çözümlerini ve teknik analizlerini içerir.
+
+---
+
+## ❓ Question 1: Hyperparameters vs. Model Parameters
+
+**Soru:** Hiperparametreleri model parametrelerinden ayıran şey nedir?
+*(What distinguishes hyperparameters from model parameters?)*
+
+* A - Hyperparameters are learned during training, whereas model parameters are fixed before training
+* B - Hyperparameters guide the model’s structure and behavior, while model parameters are learned during training
+* C - Both are optimized during the training process
+* D - Hyperparameters are specific to data preprocessing, not modeling
+
+### ✅ Doğru Cevap: B
+**Hiperparametreler modelin yapısını ve davranışını yönlendirir, model parametreleri ise eğitim sırasında öğrenilir.**
+*(Hyperparameters guide the model’s structure and behavior, while model parameters are learned during training)*
+
+> **💡 Teknik Analiz:**
+> Makine öğreniminde bu iki kavram sıkça karıştırılır:
+> * **Model Parametreleri (Weights & Biases):** Modelin veriden öğrendiği değerlerdir. (Örn: Lineer regresyondaki eğim `m` veya bir Sinir Ağındaki ağırlıklar `w`). Bunlara biz müdahale etmeyiz, model eğitimle bulur.
+> * **Hiperparametreler (Hyperparameters):** Eğitime başlamadan *önce* Veri Bilimci tarafından ayarlanan "kontrol düğmeleridir". (Örn: Ağaç derinliği, Öğrenme oranı). Modelin nasıl öğreneceğini belirlerler.
+
+---
+
+## ❓ Question 2: XGBoost Parameters
+
+**Soru:** Aşağıdakilerden hangisi XGBoost'un bir hiperparametresi DEĞİLDİR?
+*(Which of the following is NOT a hyperparameter of XGBoost?)*
+
+* A - Learning Rate (eta)
+* B - Max Depth (max_depth)
+* C - Subsample
+* D - RMSE
+
+### ✅ Doğru Cevap: D - RMSE
+
+> **💡 Teknik Analiz:**
+> * `eta` (Learning Rate), `max_depth` ve `subsample`; modelin karmaşıklığını ve öğrenme hızını ayarlayan girdilerdir (**Hiperparametre**).
+> * **RMSE** (Root Mean Squared Error) ise modelin performansını ölçen bir sonuç metrik (**Metric**) veya kayıp fonksiyonudur (**Loss Function**). Bir ayar değil, bir çıktıdır.
+
+---
+
+## ❓ Question 3: Cross-Validation in Time Series
+
+**Soru:** Zaman serisi verilerinde çapraz doğrulama (cross-validation) için neden `TimeSeriesSplit` kullanılır?
+*(Why is TimeSeriesSplit used for cross-validation in time series data?)*
+
+* A - It shuffles the data for better randomness
+* B - It ensures that test data comes chronologically after training data
+* C - It reduces computation time by using fewer folds
+* D - It standardizes the data for better model performance
+
+### ✅ Doğru Cevap: B
+**Test verisinin kronolojik olarak eğitim verisinden sonra gelmesini sağlar.**
+*(It ensures that test data comes chronologically after training data)*
+
+> **💡 Teknik Analiz:**
+> Standart K-Fold Cross Validation veriyi rastgele karıştırır (shuffle). Zaman serilerinde bu işlem **Gelecekten Bilgi Sızmasına (Data Leakage)** neden olur.
+> * Geleceği kullanarak geçmişi tahmin edemeyiz.
+> * `TimeSeriesSplit`, zamanın akışına saygı duyar ve eğitim setini her zaman test setinden önceki tarihlerde tutar.
+
+---
+
+## ❓ Question 4: Goal of Tuning
+
+**Soru:** Makine öğreniminde hiperparametre ayarlamanın (tuning) temel amacı nedir?
+*(What is the primary goal of hyperparameter tuning in machine learning?)*
+
+* A - To find the best data preprocessing steps
+* B - To reduce the size of the dataset
+* C - To optimize a model’s accuracy and generalization
+* D - To deploy the model to production
+
+### ✅ Doğru Cevap: C
+**Modelin doğruluğunu ve genelleştirme yeteneğini optimize etmek.**
+*(To optimize a model’s accuracy and generalization)*
+
+> **💡 Teknik Analiz:**
+> Varsayılan (default) ayarlar genellikle "ortalama" performans verir. Tuning işleminin amacı, modeli elimizdeki özel veri setine en uygun hale getirmek, hatayı (Bias/Variance) dengelemek ve modelin hiç görmediği verilerde de başarılı olmasını (**Generalization**) sağlamaktır.
+
+---
+
+## ❓ Question 5: RandomizedSearchCV vs. GridSearchCV
+
+**Soru:** `RandomizedSearchCV` kullanmanın `GridSearchCV`'ye göre avantajı nedir?
+*(What is the advantage of using RandomizedSearchCV over GridSearchCV?)*
+
+* A - It evaluates all possible combinations of parameters
+* B - It is faster because it searches a random subset of parameter combinations
+* C - It guarantees the best possible parameter set
+* D - It does not require cross-validation
+
+### ✅ Doğru Cevap: B
+**Daha hızlıdır çünkü parametre kombinasyonlarının rastgele bir alt kümesini arar.**
+*(It is faster because it searches a random subset of parameter combinations)*
+
+> **💡 Teknik Analiz:**
+> * **Grid Search:** Belirlediğiniz 1000 kombinasyon varsa, 1000'ini de dener. Çok yavaştır ve maliyetlidir.
+> * **Random Search:** 1000 kombinasyon içinden rastgele seçilen (örneğin) 50 tanesini dener. Genellikle en iyi sonuca çok yakın bir performansı çok daha kısa sürede bulur.
+
+---
+
+## ❓ Question 6: Output of Best Params
+
+**Soru:** `random_search.best_params_` çıktısı neyi temsil eder?
+*(What does the random_search.best_params_ output represent?)*
+
+* A - The best-performing model’s predictions
+* B - The hyperparameter values that achieved the best performance during tuning
+* C - The loss and accuracy of the final trained model
+* D - The best scoring metric achieved on the test data
+
+### ✅ Doğru Cevap: B
+**Tuning sırasında en iyi performansı elde eden hiperparametre değerleri.**
+*(The hyperparameter values that achieved the best performance during tuning)*
+
+> **💡 Teknik Analiz:**
+> Bu kod parçası bir Python sözlüğü (dictionary) döndürür. Örn: `{'max_depth': 5, 'learning_rate': 0.1}`. Bu, "Modeli en iyi bu ayarlarla eğittim" demektir. Skoru görmek için `.best_score_`, modeli almak için `.best_estimator_` kullanılır.
+
+---
+
+## ❓ Question 7: Purpose of MLflow
+
+**Soru:** MLflow'un temel amacı nedir?
+*(What is the primary purpose of MLflow?)*
+
+* A - To preprocess time series data for machine learning
+* B - To automate hyperparameter tuning
+* C - To track experiments and compare their results
+* D - To deploy machine learning models to production
+
+### ✅ Doğru Cevap: C
+**Deneyleri takip etmek ve sonuçlarını karşılaştırmak.**
+*(To track experiments and compare their results)*
+
+> **💡 Teknik Analiz:**
+> Veri Biliminde onlarca model ve yüzlerce parametre deneriz. Bunları Excel'de veya kağıtta tutmak imkansızdır. MLflow bir "Laboratuvar Defteri" gibidir; kimin, ne zaman, hangi parametreyle, hangi sonucu aldığını kaydeder (**Experiment Tracking**).
+
+---
+
+## ❓ Question 8: MLflow Logging Content
+
+**Soru:** Bir MLflow deneyinde aşağıdakilerden hangisi loglanır (kaydedilir)?
+*(Which of the following is logged in an MLflow experiment?)*
+
+* A - Model hyperparameters, metrics, and artifacts like plots
+* B - Only the final trained model
+* C - Training and test datasets
+* D - The entire grid search results
+
+### ✅ Doğru Cevap: A
+**Model hiperparametreleri, metrikler ve grafikler gibi yapıtlar (artifacts).**
+*(Model hyperparameters, metrics, and artifacts like plots)*
+
+> **💡 Teknik Analiz:**
+> MLflow'un 3 temel bileşeni loglanır:
+> 1.  **Params:** `learning_rate`, `depth` vb.
+> 2.  **Metrics:** `RMSE`, `MAE`, `Accuracy` vb.
+> 3.  **Artifacts:** Tahmin grafikleri (`plot.png`), model dosyaları (`model.pkl`), confusion matrix vb.
+
+---
+
+## ❓ Question 9: MLflow & Ngrok
+
+**Soru:** Google Colab'de MLflow çalıştırırken neden `ngrok` kullanılır?
+*(Why is ngrok used when running MLflow in Google Colab?)*
+
+* A - To preprocess the data for time-series models
+* B - To create a public URL for accessing the MLflow UI
+* C - To install additional MLflow dependencies
+* D - To handle storage for MLflow experiments
+
+### ✅ Doğru Cevap: B
+**MLflow kullanıcı arayüzüne (UI) erişmek için halka açık bir URL oluşturmak.**
+*(To create a public URL for accessing the MLflow UI)*
+
+> **💡 Teknik Analiz:**
+> Google Colab, Google'ın sunucularında çalışan sanal bir makinedir. MLflow UI `localhost:5000` portunda çalışır ancak bu port Colab sunucusunun içindedir, sizin bilgisayarınızda değil. `ngrok`, güvenli bir tünel açarak o iç portu size özel bir web linki (URL) üzerinden erişilebilir hale getirir.
+
+---
+
+## ❓ Question 10: Ngrok Session Limits
+
+**Soru:** Ücretsiz bir hesapla birden fazla ngrok oturumu açmaya çalışırsanız ne olur?
+*(What happens if you try to open multiple ngrok sessions with a free account?)*
+
+* A - The system allows unlimited sessions
+* B - The first session is closed automatically
+* C - You will get an error and must stop existing sessions
+* D - You cannot use ngrok for MLflow experiments
+
+### ✅ Doğru Cevap: C
+**Bir hata alırsınız ve mevcut oturumları durdurmanız gerekir.**
+*(You will get an error and must stop existing sessions)*
+
+> **💡 Teknik Analiz:**
+> Ngrok'un ücretsiz planı (Free Tier) genellikle aynı anda sadece **1 aktif tünele** izin verir. Eğer kodunuzu tekrar çalıştırırsanız veya başka bir notebook'ta tünel açıksa, Ngrok çakışma hatası verir. Çözüm: `ngrok.kill()` komutuyla eski tünelleri kapatmaktır.
