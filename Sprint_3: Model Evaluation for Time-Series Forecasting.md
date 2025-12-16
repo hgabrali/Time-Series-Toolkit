@@ -1458,3 +1458,410 @@ graph TD
 | **📦 Stok Yönetimi**<br>*(Inventory Management)* | **Büyük Hatalar**<br>(Outliers / Spikes) | **En Düşük RMSE** | RMSE, büyük hataların karesini alarak cezalandırır. Stok tükenmesi (stock-out) veya aşırı stok (over-stock) maliyetinin çok yüksek olduğu durumlarda, modelin "büyük ıskalamalar" yapmasını engeller. |
 | **📅 Genel Planlama**<br>*(General Planning)* | **Yorumlanabilirlik**<br>(Interpretability) | **En Düşük MAE** | "Ortalama 50 birim yanılıyoruz" demek iş birimi için anlaşılırdır. Büyük hataları RMSE kadar ağır cezalandırmaz, genel performansı yansıtır. |
 | **🛡️ Risk Yönetimi**<br>*(Risk Management)* | **Sistematik Sapma**<br>(Directional Error) | **Bias ≈ 0** | Modelin sürekli **eksik** (negatif bias) veya **fazla** (pozitif bias) tahmin yapıp yapmadığını ölçer. Hedef "Yansız" (Unbiased) bir modeldir. |
+
+
+
+
+# 🧪 Track Your Experiments: XGBoost vs. LSTM with MLflow
+
+Zaman serisi modellemesinde "En iyi model hangisi?" sorusunun cevabı tek bir denemede bulunmaz. Yüzlerce parametre kombinasyonunu (Grid Search) test etmeniz gerekir. Bu süreçte kaybolmamak için **MLflow** kullanarak her denemeyi, ürettiği hatayı ve tahmin grafiğini kayıt altına alacağız.
+
+Bu doküman; XGBoost ve LSTM modelleri için **MLflow Tracking** mekanizmasını nasıl kuracağınızı, metrikleri ve grafikleri (artifacts) nasıl loglayacağınızı adım adım anlatır.
+
+---
+
+## 📋 0. Ön Hazırlıklar (Prerequisites)
+
+Başlamadan önce aşağıdaki ortamın hazır olduğundan emin olun:
+1.  **Mevcut Notebook:** XGBoost ve LSTM tuning işlemlerini yaptığınız notebook elinizde olmalı.
+2.  **MLflow Kurulumu:** `pip install mlflow pyngrok` komutları çalıştırılmış ve (eğer Colab kullanıyorsanız) Google Drive mount edilmiş olmalı.
+
+---
+
+## 🛠️ 1. Notebook Hazırlığı (Setup)
+
+Mevcut tuning notebook'unuzun bir kopyasını alın ve adını `TS_retail_kaggle_mlflow.ipynb` olarak değiştirin.
+
+### 🔹 MLflow Başlatma Kodu (Boilerplate)
+Notebook'un en tepesine, MLflow'u ve (Colab için) Ngrok tünelini başlatan şu kodu ekleyin:
+
+```python
+import mlflow
+import subprocess
+from pyngrok import ngrok
+
+# 1. MLflow'un verileri nereye kaydedeceğini belirtin (Drive veya Local)
+# Colab için:
+mlflow_tracking_uri = "file:///content/drive/MyDrive/MLflow_Runs"
+mlflow.set_tracking_uri(mlflow_tracking_uri)
+
+# 2. Deney (Experiment) Adını Tanımlayın
+experiment_name = "Retail_Demand_Forecast_v1"
+mlflow.set_experiment(experiment_name)
+
+print(f"Tracking URI: {mlflow.get_tracking_uri()}")
+print(f"Experiment Name: {experiment_name}")
+```
+
+### 📝 3. Neyi Logluyoruz? (Logging Strategy)
+
+İki farklı model ailesi için stratejimiz şu şekildedir:
+
+| Özellik | 🌲 XGBoost (Machine Learning) | 🧠 LSTM (Deep Learning) |
+| :--- | :--- | :--- |
+| **Parametreler**<br>(Params) | `max_depth`, `n_estimators`, `eta`, `subsample` | `window_size`, `units`, `layers`, `dropout`, `batch_size` |
+| **Metrikler**<br>(Metrics) | MAE, RMSE, Bias, rMAD | MAE, RMSE, Bias, rMAD |
+| **Dosyalar**<br>(Artifacts) | Tahmin Grafiği (`forecast.png`), Feature Importance | Tahmin Grafiği (`forecast.png`), Loss Curve |
+
+* 💡 **Pro Tip:** LSTM modellerinde feature importance doğrudan çıkmaz, bu yüzden sadece tahmin grafiğine odaklanacağız.
+
+
+## 🧰 4. Yardımcı Fonksiyonlar (Helper Functions)
+
+Kod tekrarını önlemek, okunabilirliği artırmak ve **DRY (Don't Repeat Yourself)** prensibine sadık kalmak için 3 temel yardımcı fonksiyona ihtiyacımız var:
+
+1.  **`calculate_metrics`:** Model başarısını ölçen sayısal değerleri hesaplar.
+2.  **`plot_forecast`:** Tahmin grafiğini çizer ve MLflow'a yüklenebilmesi için geçici olarak diske kaydeder.
+3.  **`log_mlflow_run`:** (En önemlisi) Bir "Child Run" başlatır, parametreleri, metrikleri ve grafikleri tek seferde loglar.
+
+
+```python
+import matplotlib.pyplot as plt
+import numpy as np
+import mlflow
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+
+# --- 1. Metrik Hesaplayıcı (Metric Calculator) ---
+def calculate_metrics(y_true, y_pred):
+    """
+    Gerçek ve tahmin edilen değerler arasındaki performans metriklerini hesaplar.
+    """
+    mae = mean_absolute_error(y_true, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    bias = np.mean(y_pred - y_true)
+    
+    # rMAD (Relative Mean Absolute Difference): 
+    # Hatanın, verinin kendi değişkenliğine (variability) oranıdır.
+    # Modelin başarısını verinin oynaklığından bağımsız yorumlamayı sağlar.
+    rmad = mae / np.mean(np.abs(y_true - np.mean(y_true)))
+    
+    return {"MAE": mae, "RMSE": rmse, "Bias": bias, "rMAD": rmad}
+
+# --- 2. Grafik Çizici ve Kaydedici (Plotter) ---
+def plot_forecast(y_true, y_pred, title="Forecast"):
+    """
+    Gerçek vs Tahmin grafiğini çizer ve dosyaya kaydeder.
+    """
+    plt.figure(figsize=(12, 6))
+    plt.plot(y_true, label="Actual (Gerçek)", color='black', alpha=0.6)
+    plt.plot(y_pred, label="Predicted (Tahmin)", color='red', linestyle='--')
+    plt.title(title)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # MLflow'a artifact olarak yüklemek için görseli diske kaydetmeliyiz.
+    filename = "forecast_plot.png"
+    plt.savefig(filename)
+    plt.close() # Bellek şişmesini önlemek için figürü kapat
+    return filename
+
+# --- 3. MLflow Logging Wrapper (Sihirli Fonksiyon) ---
+def log_mlflow_run(run_name, params, y_true, y_pred, model_type="Generic"):
+    """
+    Bu fonksiyon bir 'Child Run' başlatır, her şeyi loglar ve kapatır.
+    
+    Parametreler:
+    - nested=True: Bu run'ın, halihazırda aktif olan bir 'Parent Run'ın 
+      altında gruplanmasını sağlar (Örn: XGBoost Grid Search ana başlığı altında Run_1, Run_2...).
+    """
+    with mlflow.start_run(run_name=run_name, nested=True):
+        # A. Parametreleri Logla (Hyperparameters)
+        mlflow.log_params(params)
+        
+        # B. Metrikleri Hesapla ve Logla (Metrics)
+        metrics = calculate_metrics(y_true, y_pred)
+        mlflow.log_metrics(metrics)
+        
+        # C. Grafiği Oluştur ve Artifact Olarak Yükle (Artifacts)
+        plot_file = plot_forecast(y_true, y_pred, title=f"{model_type} Forecast")
+        mlflow.log_artifact(plot_file)
+        
+        print(f"✅ Run logged: {run_name} | RMSE: {metrics['RMSE']:.2f}")
+```
+
+
+## 🌲 5. XGBoost: Tuning Döngüsü (Grid Search Loop)
+
+XGBoost modellerini eğitirken, belirlediğimiz hiperparametre uzayındaki tüm kombinasyonları deneriz. Ancak MLflow'da kirlilik yaratmamak için **Nested Run (İç İçe Çalıştırma)** mimarisini kullanırız.
+
+### ⚙️ Çalışma Mantığı (Workflow)
+
+Bu döngü şu adımları izler:
+1.  **Grid Oluşturma:** `itertools.product` ile parametrelerin tüm olası kombinasyonlarını (Cartesian Product) üretir.
+2.  **Parent Run (Ana Deney):** Tüm süreci kapsayan tek bir `XGBoost_Grid_Search` başlatır.
+3.  **Child Run (Alt Deneyler):** Döngüdeki her bir kombinasyon için `log_mlflow_run` fonksiyonunu çağırır. Bu fonksiyon `nested=True` parametresiyle çalıştığı için, sonuçlar ana deneyin altına gruplanır.
+
+```mermaid
+graph TD
+    Start((Başla)) --> Define["Parametre Grid'ini Tanımla"]
+    Define --> Combo["Kombinasyonları Üret<br/>(itertools)"]
+    Combo --> Parent{"Parent Run Başlat<br/>'XGBoost_Grid_Search'"}
+    
+    Parent --> Loop[Döngüye Gir]
+    Loop --> Train["Modeli Eğit<br/>(XGBRegressor)"]
+    Train --> Predict[Tahmin Yap]
+    Predict --> Log["📝 Child Run Logla<br/>(log_mlflow_run)"]
+    
+    Log --> Check{Bitti mi?}
+    Check -- Hayır --> Loop
+    Check -- Evet --> End((Bitir))
+    
+    style Parent fill:#e1f5fe,stroke:#01579b
+    style Log fill:#fff9c4,stroke:#fbc02d
+```
+
+---
+
+
+```python
+import xgboost as xgb
+import itertools
+import mlflow
+
+# 1. Grid Search Parametre Uzayı
+# Bu değerler deneyimle veya literatürle belirlenir.
+param_grid = {
+    'max_depth': [3, 6],           # Ağacın derinliği (Overfitting kontrolü)
+    'eta': [0.01, 0.1],            # Öğrenme oranı (Learning rate)
+    'n_estimators': [100, 500]     # Ağaç sayısı
+}
+
+# 2. Kombinasyonları Matematiksel Olarak Oluştur
+keys, values = zip(*param_grid.items())
+combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+
+print(f"Toplam {len(combinations)} farklı kombinasyon test edilecek.")
+
+# 3. --- PARENT RUN (Ana Kapsayıcı) ---
+# Tüm denemeleri tek bir çatı altında toplar.
+with mlflow.start_run(run_name="XGBoost_Grid_Search"):
+    print("🚀 XGBoost Grid Search Başlıyor...")
+    
+    for i, params in enumerate(combinations):
+        print(f"Iterasyon {i+1}/{len(combinations)}: {params}")
+        
+        # A. Modeli Tanımla ve Eğit
+        # objective='reg:squarederror': Regresyon problemleri için standart loss
+        model = xgb.XGBRegressor(objective='reg:squarederror', **params)
+        model.fit(X_train, y_train)
+        
+        # B. Tahmin Yap
+        preds = model.predict(X_test)
+        
+        # C. MLflow'a Kaydet (Child Run)
+        # Daha önce tanımladığımız helper fonksiyonu kullanıyoruz.
+
+
+        # Bu fonksiyon arka planda 'nested=True' kullandığı için
+        # bu run, 'XGBoost_Grid_Search' altına eklenecektir.
+        run_name = f"XGB_Run_{i+1}"
+        
+        log_mlflow_run(
+            run_name=run_name, 
+            params=params, 
+            y_true=y_test, 
+            y_pred=preds, 
+            model_type="XGBoost"
+        )
+```
+---
+
+
+## 🧠 6. LSTM: Tuning Döngüsü ve "Inverse Transform" Kritik Detayı
+
+LSTM modelleri, gradyanların patlamaması (exploding gradients) için **[0, 1]** aralığına sıkıştırılmış verilerle çalışır. Ancak iş birimi "0.45" değerinden bir şey anlamaz; onların "450 adet satış"ı görmesi gerekir.
+
+Bu aşamada iki kritik teknik zorluk vardır:
+1.  **Dinamik Veri Şekillendirme:** `seq_len` (pencere boyutu) değiştiğinde, eğitim verisinin boyutları değişir. Bu yüzden veri hazırlığı döngünün *içinde* yapılmalıdır.
+2.  **Ters Dönüşüm Tuzağı (Inverse Transform Trap):** Scaler, eğitimde 9 özellik (feature) gördüyse, ters dönüşümde de 9 özellik bekler. Ancak model sadece 1 tahmin üretir. Bunu aşmak için "sahte" (dummy) sütunlar kullanırız.
+
+### 🔄 İş Akışı (The Workflow)
+
+```mermaid
+graph LR
+    Input[("Girdi Verisi<br/>(Input Data)")] -->|Scale Fit/Transform| Scaled[("Ölçekli Veri<br/>[0, 1]")]
+    Scaled --> LSTM[("🧠 LSTM Modeli")]
+    LSTM -->|Predict| PredScaled[("Ölçekli Tahmin<br/>(0.45)")]
+    
+    PredScaled -->|⚠️ HATA: Boyut Uyuşmazlığı| Error[("❌ Error: Expected 9 cols, got 1")]
+    
+    PredScaled -->|✅ ÇÖZÜM: Dummy Injection| Dummy[("💉 Dummy Matrix<br/>(Tahmin + 8 Boş Sütun)")]
+    Dummy -->|Inverse Transform| Inverse[("Gerçek Değerler<br/>(450 Adet)")]
+    Inverse -->|Log| MLflow[("🧪 MLflow")]
+    
+    style Error fill:#ffcccc,stroke:#ff0000
+    style Inverse fill:#e8f5e9,stroke:#2e7d32
+```
+---
+
+```python
+import itertools
+import numpy as np
+import mlflow
+
+# 1. LSTM Hiperparametre Grid'i
+lstm_grid = {
+    'seq_len': [30],      # Pencere boyutu (Geçmişe bakış)
+    'n_units': [64, 128], # LSTM hücresi sayısı
+    'epochs': [20]        # Hız için düşük tutuldu (Gerçekte 50+ olabilir)
+}
+
+# Kombinasyonları oluştur
+keys, values = zip(*lstm_grid.items())
+lstm_combos = [dict(zip(keys, v)) for v in itertools.product(*values)]
+
+# --- PARENT RUN ---
+with mlflow.start_run(run_name="LSTM_Grid_Search"):
+    print(f"🚀 LSTM Grid Search Başlıyor ({len(lstm_combos)} deneme)...")
+    
+    for i, params in enumerate(lstm_combos):
+        print(f"Testing: {params} ...")
+        
+        # A. Veriyi Dinamik Hazırla (KRİTİK ADIM)
+        # Sequence Length değiştiğinde X ve y matrislerinin satır sayısı değişir.
+        # make_sequences fonksiyonu önceki adımlardan gelmektedir.
+        X_train_seq, y_train_seq = make_sequences(train_scaled, params['seq_len'])
+        X_test_seq, y_test_seq = make_sequences(test_scaled, params['seq_len'])
+        
+        # B. Modeli Kur (Model Factory)
+        # build_lstm fonksiyonu önceki adımlardan gelmektedir.
+        model = build_lstm(
+            seq_len=params['seq_len'],
+            n_features=X_train_seq.shape[2], # Özellik sayısı (genellikle 9)
+            n_units=params['n_units'],
+            n_layers=1,
+            dropout_rate=0.2
+        )
+        
+        # C. Modeli Eğit
+        model.fit(
+            X_train_seq, y_train_seq, 
+            epochs=params['epochs'], 
+            batch_size=32, 
+            verbose=0 # Konsolu kirletme
+        )
+        
+        # D. Tahmin Yap (Hala [0, 1] aralığında)
+        preds_scaled = model.predict(X_test_seq, verbose=0)
+        
+        # E. TERS DÖNÜŞÜM (INVERSE TRANSFORM TRICK) ⚠️
+        # Scaler çok değişkenli (multivariate) olduğu için, tek sütunlu tahmini
+        # doğrudan inverse_transform yapamayız. Yanına boş sütunlar eklemeliyiz.
+        
+        # 1. Tahmin sayısı kadar satır, toplam feature sayısı kadar sütun oluştur (0 ile doldur)
+        n_features = X_train_seq.shape[2]
+        dummy_preds = np.zeros((len(preds_scaled), n_features))
+        dummy_actuals = np.zeros((len(y_test_seq), n_features))
+        
+        # 2. İlk sütuna (Target değişkenimizin yeri) tahminleri yerleştir
+        dummy_preds[:, 0] = preds_scaled.flatten()
+        dummy_actuals[:, 0] = y_test_seq.flatten()
+        
+        # 3. Tüm matrisi ters çevir ve sadece ilk sütunu al
+        preds_real = scaler.inverse_transform(dummy_preds)[:, 0]
+        actuals_real = scaler.inverse_transform(dummy_actuals)[:, 0]
+        
+        # F. MLflow'a Kaydet
+        # Helper fonksiyonumuz artık gerçek (unscaled) değerlerle çalışabilir.
+        run_name = f"LSTM_Units_{params['n_units']}_Seq_{params['seq_len']}"
+        
+        log_mlflow_run(
+            run_name=run_name, 
+            params=params, 
+            y_true=actuals_real, 
+            y_pred=preds_real, 
+            model_type="LSTM"
+        )
+```
+
+---
+
+# 📊 7. Sonuçları Karşılaştırma (The Showdown)
+
+Tüm kodlar çalışıp bittiğinde, elimizde onlarca farklı model versiyonu (Run) olacaktır. Şimdi **MLflow UI** arayüzünü açarak bu karmaşayı anlamlı bir "Lider Tablosuna" (Leaderboard) dönüştüreceğiz ve kazananı seçeceğiz.
+
+---
+
+## 🖥️ 1. Arayüzü Başlatma (Accessing the UI)
+
+Çalıştığınız ortama göre arayüze erişim yönteminiz değişir:
+
+| Ortam (Environment) | Erişim Yöntemi | Not |
+| :--- | :--- | :--- |
+| **💻 Local (Yerel)** | Terminale `mlflow ui` yazın. | Tarayıcıda `http://localhost:5000` adresine gidin. |
+| **☁️ Google Colab** | Kodunuzun başında kurduğunuz **Ngrok** tünelini kullanın. | Çıktıdaki `...ngrok-free.app` uzantılı linke tıklayın. |
+
+---
+
+## 🔍 2. Analiz Stratejisi (Analysis Strategy)
+
+Arayüz açıldığında şu adımları izleyerek en iyi modeli tespit edin:
+
+### A. Lider Tablosunu Oluşturma (The Leaderboard)
+1.  **Experiments Sekmesi:** Sol menüden `Retail_Demand_Forecast_v1` (veya verdiğiniz isim) deneyini seçin.
+2.  **Sütunları Düzenle:** Çok fazla sütun varsa, sadece kritik olanları bırakın: `metrics.RMSE`, `metrics.MAE`, `params.learning_rate`, `params.n_units` vb.
+3.  **Sıralama (Sort):** `metrics.RMSE` sütun başlığına tıklayarak **küçükten büyüğe** (artan) sıralayın. En üstteki satır, matematiksel olarak en başarılı modeldir.
+
+### B. Görsel Karşılaştırma (Visual Comparison)
+En iyi **XGBoost** ve en iyi **LSTM** modelinin yanındaki kutucukları (checkbox) işaretleyin ve yukarıdaki **"Compare"** butonuna basın.
+
+#### 1. Scatter Plot (Dağılım Grafiği)
+Parametrelerin hataya etkisini görmek için kullanılır.
+* *X Ekseni:* `n_estimators` (veya `epochs`)
+* *Y Ekseni:* `metrics.RMSE`
+* *Soru:* Ağaç sayısı arttıkça hata azalıyor mu, yoksa bir noktadan sonra sabit mi kalıyor (Diminishing Returns)?
+
+#### 2. Parallel Coordinates Plot (Paralel Koordinatlar) 🌟
+Bu grafik, hiperparametrelerin "tatlı noktasını" (sweet spot) bulmak için harikadır.
+* Her dikey çizgi bir parametreyi temsil eder.
+* Çizgilerin yoğunlaştığı ve hatanın düştüğü yolları izleyerek hangi parametre aralıklarının (örn: `lr=0.01` ve `depth=6`) birlikte iyi çalıştığını görebilirsiniz.
+
+---
+
+## 📦 3. Artifact Kontrolü (The Eye Test)
+
+Matematiksel skor (RMSE) harika olabilir, ama model mantıklı davranıyor mu? Bunu anlamak için **Run Detail** sayfasına gidin ve `Artifacts` bölümündeki `forecast_plot.png` dosyasını açın.
+
+### Kritik Kontrol Listesi:
+* **Trend Uyumu:** Model genel yükseliş/düşüş trendini yakalamış mı?
+* **Pik Noktaları:** Satışların tavan yaptığı günleri tahmin edebilmiş mi, yoksa "güvenli" oynayıp ortalamada mı kalmış?
+* **Gecikme (Lag):** Tahmin çizgisi, gerçek veriyi 1 gün geriden mi takip ediyor? (Bu, LSTM'in yeterince öğrenemediğinin işaretidir).
+
+---
+
+## 🏆 4. Karar Akışı (Decision Workflow)
+
+Kazananı seçerken izleyeceğiniz mantıksal yol:
+
+```mermaid
+graph TD
+    UI["🖥️ MLflow UI Aç"] --> Sort["Sırala: RMSE (Ascending)"]
+    Sort --> Top3["En İyi 3 Modeli Seç"]
+    
+    Top3 --> VisualCheck{"👁️ Görsel Kontrol<br/>(Artifacts: forecast.png)"}
+    
+    VisualCheck -- "Gecikme Var (Lagging)" --> Discard["❌ ELe (Discard)"]
+    VisualCheck -- "Trendi Yakalamış" --> SpeedCheck{"⏱️ Hız/Maliyet Kontrolü"}
+    
+    SpeedCheck -- "Çok Yavaş (LSTM)" --> Margin{"Fark %1'den büyük mü?"}
+    SpeedCheck -- "Hızlı (XGBoost)" --> Winner["🏆 Kazanan: XGBoost"]
+    
+    Margin -- "Evet, Çok Daha İyi" --> WinnerLSTM["🏆 Kazanan: LSTM"]
+    Margin -- "Hayır, Fark Az" --> WinnerXGB["🏆 Kazanan: XGBoost (Verimlilik)"]
+    
+    style Winner fill:#c8e6c9,stroke:#2e7d32
+    style WinnerLSTM fill:#e1bee7,stroke:#4a148c
+    style WinnerXGB fill:#fff9c4,stroke:#fbc02d
+```
+
+💡 **Uzman Notu:** Eğer XGBoost ve LSTM benzer performans gösteriyorsa, her zaman daha basit ve hızlı olanı (XGBoost) seçin. Karmaşıklık (Complexity) sadece belirgin bir performans artışı sağlıyorsa haklı çıkarılabilir.
