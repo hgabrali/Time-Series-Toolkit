@@ -303,5 +303,169 @@ Bu doküman, **Time-Series Forecasting (Zaman Serisi Tahminleme)** modellerinin 
 > Karar her zaman **iş hedeflerine (Business Goals)** göre verilir.
 
 ---
+# ⏳ Time-Series Model Evaluation: Train-Test Splits
 
+Geleneksel makine öğreniminde (Traditional ML) verilerin **I.I.D.** (Independent and Identically Distributed - Bağımsız ve Özdeş Dağılımlı) olduğu varsayılır. Bu nedenle rastgele (random) bölme yapılabilir. Ancak **Zaman Serilerinde** durum farklıdır; veriler arasında **zamansal bir bağımlılık (autocorrelation)** vardır.
+
+Bu doküman, zaman serisi tahmin modellerini değerlendirirken kullanılan doğru validasyon stratejilerini, teknik ayrımları ve uygulama yöntemlerini içerir.
+
+---
+
+## 🚫 Neden Rastgele (Random) Split Yapamayız?
+Zaman serilerinde rastgele bölme yapmak **Data Leakage (Veri Sızıntısı)** yaratır.
+* **Sorun:** Gelecekteki bir veri noktasını eğitim (train) setine, geçmişteki bir noktayı test setine koyarsanız; model "geleceği görerek" geçmişi tahmin etmeye çalışır.
+* **Sonuç:** Model eğitimde harika sonuçlar verir ancak canlı (production) ortamda başarısız olur.
+* **Kural:** Bölme işlemi her zaman **Zaman Duyarlı (Time-Aware)** olmalıdır. Gelecek, geçmişi eğitmek için kullanılamaz.
+
+---
+
+## 🛠️ Bölme Yöntemleri (Splitting Techniques)
+
+### Method 1 & 2: Simple Chronological Split (Hold-Out)
+Veri seti, zaman ekseninde tek bir kesim noktası belirlenerek ikiye ayrılır. Tarih bazlı (Date-based) veya oran bazlı (%70-%30) yapılabilir.
+
+* **Yapısı:** İlk %80 Eğitim, Son %20 Test.
+* **Kullanımı:** Veri seti çok büyükse ve zaman içinde istatistiksel özellikleri (dağılımı) çok değişmiyorsa (Stationary) uygundur.
+
+```text
+[Eğitim Verisi ........................] | [Test Verisi]
+t_0 ---------------------------------> t_split ------> t_end
+```
+
+<img width="1185" height="316" alt="image" src="https://github.com/user-attachments/assets/88b578eb-d4eb-47c0-ba87-9d5f12235bd3" />
+
+## 🔄 Method 3: Cross-Validation Strategies (Geriye Dönük Test Stratejileri)
+
+Zaman serisi analizinde tek bir test seti (single test set) kullanmak bazen yanıltıcı sonuçlar doğurabilir. Örneğin, seçilen test dönemi çok olağandışı bir döneme (outlier/anomaly period) denk gelebilir ve bu da modelin genel başarısını yansıtmaz.
+
+Bu riski minimize etmek için **Cross-Validation (Çapraz Doğrulama)** uygulanır. Ancak, zaman serilerinin sıralı yapısı gereği standart *K-Fold* yerine **Walk-Forward Validation (İleriye Yürüyen Doğrulama)** yöntemi kullanılır.
+
+Bu yöntemde temel olarak iki ana yaklaşım vardır. Literatürde genellikle karıştırılsa da teknik farkları belirgindir. Aşağıda, en yaygın kullanılan yaklaşım detaylandırılmıştır:
+
+### 📈 A. Expanding Window (Genişleyen Pencere)
+
+Bu yöntem, Scikit-Learn kütüphanesindeki `TimeSeriesSplit` fonksiyonunun varsayılan çalışma mantığıdır.
+
+#### ⚙️ Çalışma Prensibi (Mechanism)
+Eğitim seti (training set) her iterasyonda kümülatif olarak büyürken, test seti (test set) zaman ekseninde ileriye doğru kayar. Başlangıç noktası sabittir, ancak bitiş noktası her adımda ilerler.
+
+**Görselleştirme (Visualization):**
+
+```text
+Adım 1: | Train (T1)       | -> [Test (T2)]
+Adım 2: | Train (T1 + T2)  | -------------> [Test (T3)]
+Adım 3: | Train (T1 + T2 + T3)            | -------------> [Test (T4)]
+```
+
+#### 🔑 Temel Nitelikler
+* **Hafıza (Memory):** Model, tüm geçmiş veriyi (historical data) hatırlar ve kullanır. Veri seti kesilmez, sürekli eklenir.
+
+* Kütüphane Desteği (Library Support): Python'da sklearn.model_selection.TimeSeriesSplit bu mantıkla çalışır.
+
+* **Kullanım Senaryosu (Use Case):** Veri geçmişinin tamamının (entire history) model başarısı için önemli olduğu ve eski verilerin hala geçerliliğini koruduğu durumlarda tercih edilir.
+
+* 💡 Uzman Notu: Bu yöntem, veri miktarı arttıkça eğitim süresini (training time) uzatabilir ancak uzun vadeli trendleri (long-term trends) yakalamak için idealdir.
+
+  ### 🔄 B. Rolling Window (Kayan Pencere)
+
+Bu yöntemde eğitim setinin boyutu sabittir (fixed size). Pencere zaman ekseninde ilerledikçe, yeni veri eğitim setine eklenir ve en eski veri eğitim setinden çıkarılır.
+
+#### ⚙️ Çalışma Prensibi (Mechanism)
+Modelin hafızası sınırlıdır; geçmişi bir "kuyruk" gibi takip eder.
+
+**Görselleştirme (Visualization):**
+```text
+Adım 1: | Train (T1-T2) | -> [Test (T3)]
+Adım 2:       | Train (T2-T3) | -> [Test (T4)]
+Adım 3:             | Train (T3-T4) | -> [Test (T5)]
+```
+
+### 🔄 B. Rolling Window (Kayan Pencere)
+
+Bu strateji, modelin hafızasını sınırlar ve sadece belirli bir yakın geçmişe odaklanmasını sağlar.
+
+#### 🔑 Temel Nitelikler ve Kullanım
+
+* **Özellik (Feature):** Model sadece en yakın geçmişi (**recent history** / **sliding window**), örneğin son 1 yılı hatırlar. Pencere kaydıkça, en eski verilerin etkisi silinir (**impact is removed**).
+* **Kullanım (Usage):** Veri setinde **Concept Drift** (Kavram Kayması / Rejim Değişikliği) varsa tercih edilir.
+    * *Örnek:* 5 yıl önceki piyasa koşulları veya tüketici davranışları bugünü temsil etmiyorsa (**obsolete data**), modelin o verileri "unutması" (**forgetting mechanism**) performans için daha iyidir.
+
+---
+
+### 🐍 Teknik Uygulama Notu (Technical Implementation Note: Python/Sklearn)
+
+Scikit-learn kütüphanesindeki `TimeSeriesSplit` sınıfı, varsayılan ayarlarıyla **Expanding Window** (Genişleyen Pencere) mantığıyla çalışır.
+
+> **💡 Uzman İpucu (Expert Tip):** Eğer `TimeSeriesSplit`'i **Rolling Window** olarak kullanmak istiyorsanız, `max_train_size` parametresini ayarlamanız gerekir. Aksi takdirde eğitim seti sürekli büyür.
+
+Hiperparametre optimizasyonu (**Hyperparameter Optimization**) süreçlerinde (örneğin `GridSearchCV` veya `RandomizedSearchCV`) `cv` parametresine bu objeyi vermemiz gerekir.
+
+---
+
+### ✅ Doğru İş Akışı (Correct Workflow)
+
+Başarılı bir zaman serisi modellemesi için izlenmesi gereken standart süreç şöyledir:
+
+1.  **Veriyi Ayır (Split):** Veriyi kronolojik olarak (**chronologically**) ikiye ayır:
+    * `X_train_full`: %80 (Eğitim ve Validasyon döngüsü için)
+    * `X_test`: %20 (Sadece Final Test için)
+2.  **Test Setini Kilitle (Hold-out):** `X_test` setini "kasaya kilitle" (**lock away**). Model canlıya (**production**) alınana kadar bu veriye asla dokunma (**No peeking / Avoid Look-ahead Bias**).
+3.  **Çapraz Doğrulama (Cross-Validation):** `X_train_full` üzerinde `TimeSeriesSplit` kullanarak Hiperparametre Taraması (**Validation**) yap.
+4.  **Final Değerlendirme (Evaluation):** En iyi parametrelerle (**best parameters**) eğitilen modeli `X_test` üzerinde test et ve son performansı ölç.
+
+#### 💻 Python Uygulama Kodu
+
+```python
+from sklearn.model_selection import TimeSeriesSplit
+
+# 5 parçalı Cross-Validation
+# Eğer Rolling Window isteniyorsa 'max_train_size' belirtilmeli!
+tscv = TimeSeriesSplit(n_splits=5, max_train_size=None) # None = Expanding, Int = Rolling
+
+for train_index, val_index in tscv.split(X):
+    # İndeksleri kullanarak veriyi bölme
+    X_train, X_val = X[train_index], X[val_index]
+    y_train, y_val = y[train_index], y[val_index]
+    
+    # Buradan sonra model eğitimi ve validasyonu yapılır
+    # model.fit(X_train, y_train)
+    # ...
+
+```
+
+# ⚔️ Zaman Serisi Validasyon Stratejileri: Karşılaştırmalı Analiz
+
+Zaman serisi modellerini doğrularken (validation) kullanılacak yöntem, veri setinin doğasına ve iş probleminin gerekliliklerine göre seçilmelidir. Aşağıdaki tablolar ve görseller, **Rolling** (Kayan) ve **Expanding** (Genişleyen) pencere yöntemleri ile **Basit Kronolojik Bölme** arasındaki teknik farkları özetlemektedir.
+
+---
+
+## 1. 🆚 Karşılaştırma: Rolling vs. Expanding Window
+
+Bu bölüm, iki ana çapraz doğrulama (cross-validation) stratejisinin teknik özelliklerini kıyaslar.
+
+### 🎨 Görsel Anlatım (Visual Concept)
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '13px'}}}%%
+gantt
+    title Expanding vs Rolling Window
+    dateFormat X
+    axisFormat %s
+    
+    section Expanding (Genişleyen)
+    Train (T1)       :a1, 0, 10
+    Test             :crit, 10, 12
+    Train (T1+T2)    :a2, 0, 12
+    Test             :crit, 12, 14
+    Train (T1+T2+T3) :a3, 0, 14
+    Test             :crit, 14, 16
+
+    section Rolling (Kayan)
+    Train (T1)       :b1, 0, 10
+    Test             :crit, 10, 12
+    Train (T2)       :b2, 2, 12
+    Test             :crit, 12, 14
+    Train (T3)       :b3, 4, 14
+    Test             :crit, 14, 16
+```
 
