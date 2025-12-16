@@ -1234,22 +1234,20 @@ xgb_preds = model_xgb.predict(X_test)
 final_preds = (0.5 * lstm_preds) + (0.5 * xgb_preds)
 
 ```
-
-### 🎨 Ensemble Logic
+### 🎨 Görsel Mantık (Ensemble Logic)
 
 Aşağıdaki diyagram, LSTM ve XGBoost modellerinin güçlü yanlarını birleştiren hibrit yapıyı göstermektedir.
 
 ```mermaid
 graph TD
-    Data[Veri Seti / Dataset] --> LSTM[LSTM Modeli]
-    Data --> XGB[XGBoost Modeli]
+    Data["Veri Seti / Dataset"] --> LSTM["LSTM Modeli"]
+    Data --> XGB["XGBoost Modeli"]
     
-    LSTM -- "Trendi Yakalar (Captures Trend)" --> P1[Tahmin A]
-    XGB -- "Pikleri Yakalar (Captures Peaks)" --> P2[Tahmin B]
+    LSTM -- "Trendi Yakalar (Captures Trend)" --> P1["Tahmin A"]
+    XGB -- "Pikleri Yakalar (Captures Peaks)" --> P2["Tahmin B"]
     
-    P1 --> Mix{Ensemble<br/>(Ortalama / Average)}
+    %% Tırnak işaretleri hatayı engeller
+    P1 --> Mix{"Ensemble<br/>(Ortalama / Average)"}
     P2 --> Mix
     
-    Mix --> Final[🚀 Daha Kararlı & Güçlü Tahmin<br/>(Robust Prediction)]
-
-```
+    Mix --> Final["🚀 Daha Kararlı & Güçlü Tahmin<br/>(Robust Prediction)"]
