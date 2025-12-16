@@ -1251,3 +1251,88 @@ graph TD
     P2 --> Mix
     
     Mix --> Final["🚀 Daha Kararlı & Güçlü Tahmin<br/>(Robust Prediction)"]
+
+
+# 🧪 Experiment Tracking with MLflow
+
+Makine öğrenimi deneylerini (ARIMA, XGBoost, LSTM vb.) yönetmek karmaşıklaşabilir. MLflow, Excel tabloları ve ekran görüntüleri arasında kaybolmadan; parametreleri, metrikleri ve modelleri düzenli bir şekilde takip etmenizi sağlar.
+
+Aşağıdaki diyagramlar, MLflow'un neden gerekli olduğunu, neleri kaydettiğini ve nasıl çalıştığını özetlemektedir.
+
+---
+
+### 🧠 1. Why MLflow & What We Log (Neden ve Ne Kaydediyoruz?)
+
+Bu diyagram, MLflow'un "Dağınık Deneyler" sorununu nasıl çözdüğünü ve veri bilimci için hangi kritik bilgileri sakladığını gösterir.
+
+```mermaid
+graph TD
+    %% Sorun Tanımı
+    Chaos[("🔥 The Problem<br/>(Spreadsheets & Screenshots)")]
+    
+    %% Çözüm
+    MLflow{{"🧪 MLflow Tracking"}}
+    
+    %% Bağlantı
+    Chaos -->|Solution| MLflow
+    
+    %% Neler Loglanıyor? (What we log)
+    MLflow --> Params[⚙️ Hyperparameters]
+    MLflow --> Metrics[📊 Metrics]
+    MLflow --> Artifacts[📦 Artifacts]
+    
+    %% Detaylar
+    Params --- P1("p, d, q<br/>Learning Rate<br/>Window Size")
+    Metrics --- M1("MAE, RMSE<br/>MAD, MAPE")
+    Artifacts --- A1("Plots (Prediction Graphs)<br/>Models (.pkl / .h5)<br/>Confusion Matrices")
+    
+    %% Stil Tanımlamaları
+    classDef chaos fill:#ffcccc,stroke:#ff0000,stroke-width:2px;
+    classDef main fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef nodes fill:#ffffff,stroke:#333,stroke-width:1px;
+    
+    class Chaos chaos;
+    class MLflow main;
+    class Params,Metrics,Artifacts,P1,M1,A1 nodes;
+```
+
+
+### 🏗️ 2. How We'll Run It (Çalışma Mimarisi)
+MLflow'u çalıştırmanın iki yolu vardır. Aşağıdaki akış şeması, Local (Yerel) ve Google Colab ortamları arasındaki kurulum farkını gösterir.
+
+flowchart LR
+    subgraph Local_Env ["💻 Local Environment"]
+        direction TB
+        L_NB[Local Notebook] -->|Logs to| L_Disk[("💾 Local Disk<br/>(./mlruns)")]
+        L_Disk -->|Reads| L_UI["🖥️ MLflow UI Server<br/>(localhost:5000)"]
+    end
+
+    subgraph Cloud_Env ["☁️ Google Colab Setup"]
+        direction TB
+        C_NB[Colab Notebook] -->|Mounts & Logs| GDrive[("📁 Google Drive<br/>(Storage)")]
+        GDrive -->|Reads| C_UI["🖥️ MLflow UI (Background)"]
+        C_UI -.->|Tunneling| Ngrok["🔗 ngrok Service"]
+        Ngrok -->|Public URL| User((User/Data Scientist))
+    end
+
+    %% Stil
+    style Local_Env fill:#f9fbe7,stroke:#827717
+    style Cloud_Env fill:#e3f2fd,stroke:#1565c0
+    style Ngrok fill:#fff3e0,stroke:#ef6c00,stroke-dasharray: 5 5
+
+### 🗺️ 3. Roadmap for Using MLflow (Uygulama Yol Haritası)
+Projede MLflow'u entegre ederken izleyeceğimiz 5 adımlı süreç:
+
+graph TD
+    Step1("1️⃣ Install & Setup<br/>(pip install mlflow)") 
+    --> Step2("2️⃣ Start Experiment<br/>Log a Simple Baseline Model")
+    --> Step3("3️⃣ Iterate & Scale<br/>Add ARIMA, SARIMA, XGBoost, LSTM")
+    --> Step4("4️⃣ Compare Runs<br/>Open UI & Analyze Side-by-Side")
+    --> Step5("5️⃣ Artifact Management<br/>Save Best Plots & Models")
+
+    %% Stil
+    style Step1 fill:#f3e5f5,stroke:#4a148c
+    style Step2 fill:#e1bee7,stroke:#4a148c
+    style Step3 fill:#ce93d8,stroke:#4a148c
+    style Step4 fill:#ba68c8,stroke:#4a148c
+    style Step5 fill:#ab47bc,stroke:#4a148c,color:#fff
