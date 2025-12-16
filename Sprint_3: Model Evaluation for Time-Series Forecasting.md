@@ -1432,10 +1432,10 @@ Aşağıdaki diyagram ve tablo, hangi senaryoda hangi metriğe odaklanmanız ger
 graph TD
     Start{{"❓ İş Hedefiniz Nedir?<br/>(What is your Goal?)"}}
     
-    %% Dallar
-    Start -->|Stok Yönetimi & Maliyet<br/>(Inventory Mgmt)| RMSE_Path[Olası büyük hatalardan korkuyorum]
-    Start -->|Genel Planlama & Raporlama<br/>(General Planning)| MAE_Path[Ortalama durumu bilmek istiyorum]
-    Start -->|Risk Yönetimi & Lojistik<br/>(Risk Mgmt)| Bias_Path[Sürekli eksik/fazla tahminden kaçınıyorum]
+    %% Dallar (Oklar tırnak içine alınarak hata düzeltildi)
+    Start -->|"Stok Yönetimi & Maliyet<br/>(Inventory Mgmt)"| RMSE_Path["Olası büyük hatalardan korkuyorum"]
+    Start -->|"Genel Planlama & Raporlama<br/>(General Planning)"| MAE_Path["Ortalama durumu bilmek istiyorum"]
+    Start -->|"Risk Yönetimi & Lojistik<br/>(Risk Mgmt)"| Bias_Path["Sürekli eksik/fazla tahminden kaçınıyorum"]
     
     %% Sonuçlar
     RMSE_Path --> Result1("📉 Kazanan: En Düşük RMSE<br/>(Punishes Spikes)")
@@ -1448,7 +1448,7 @@ graph TD
     style Result2 fill:#e8f5e9,stroke:#66bb6a
     style Result3 fill:#e3f2fd,stroke:#42a5f5
 
-```
+
 
 ### 📋 Detaylı Strateji Tablosu
 
