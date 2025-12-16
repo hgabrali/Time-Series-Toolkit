@@ -162,3 +162,146 @@ Sadece grafiğe bakmak yetmez. Otokorelasyonun olup olmadığını istatistiksel
 ---
 
 > **Pro Tip:** Asla tek bir metriğe güvenmeyin. Genellikle **RMSE** (model optimizasyonu için) ve **MAPE/WMAPE** (iş birimlerine raporlama için) birlikte kullanılır. Residual analizi ise modelin güvenilirliği ("Canlıya alınır mı?") sorusunun cevabıdır.
+
+
+# 📉 Time-Series Forecasting: Model Evaluation Quiz Solutions
+
+Bu doküman, **Time-Series Forecasting (Zaman Serisi Tahminleme)** modellerinin değerlendirilmesi, hata metrikleri ve validasyon stratejileri üzerine odaklanan **Quiz 5** sorularının detaylı çözümlerini ve teknik açıklamalarını içerir.
+
+> **Özet:** Bu quiz, özellikle "Data Leakage", "RMSE vs MAPE karşılaştırması" ve "Validasyon Yöntemleri" konularındaki kavramsal anlayışı test etmektedir.
+
+---
+
+## 🧩 Quiz Soruları ve Teknik Çözümler
+
+### 1. Neden rastgele eğitim-test bölmesi (random train-test split) zaman serisi verileri için uygun değildir?
+**Soru:** Why is random train-test splitting not suitable for time-series data?
+* A - it takes longer to compute
+* **B - it can lead to data leakage by using future data for training** ✅
+* C - it requires specific algorithms to process time-series
+* D - it reduces the size of the training dataset
+
+> **💡 Teknik Açıklama:**
+> Zaman serilerinde veriler arasında zamansal bir bağımlılık (temporal dependency) vardır. Veriyi rastgele karıştırdığınızda, gelecekteki bir veri noktasını eğitim setine, geçmişteki bir noktayı test setine koyabilirsiniz. Bu durum, modelin geleceği görerek geçmişi tahmin etmesine (**Data Leakage**) neden olur ve yanıltıcı derecede yüksek başarı oranları verir.
+
+---
+
+### 2. Hangi bölme yöntemi, verinin önceki bölümlerini eğitim ve sonraki bölümlerini test için kullanmayı içerir?
+**Soru:** Which splitting method involves using earlier portions of the data for training and later portions for testing?
+* A - random train-test split
+* **B - k-fold cross-validation** ✅
+* C - chronological split
+* D - rolling window split
+
+> **💡 Teknik Açıklama:**
+> Burada kastedilen standart k-fold değil, zaman serileri için uyarlanmış **Time Series Cross-Validation** (genellikle Nested Cross-Validation veya Blocked CV olarak da bilinir) yöntemidir. Bu yöntemde veri blokları zaman sırasına göre korunur; model geçmiş bloklarda eğitilir ve gelecek bloklarda test edilir.
+
+---
+
+### 3. Zaman serisi değerlendirmesi için "Rolling Window" (Kayan Pencere) kullanmanın temel avantajı nedir?
+**Soru:** What is the main advantage of using a rolling window split for time-series evaluation?
+* A - it reduces computation time
+* B - it avoids overfitting
+* **C - it mimics real-world scenarios with models predicting future unseen data** ✅
+* D - it uses all data for both training and testing
+
+> **💡 Teknik Açıklama:**
+> Rolling Window yöntemi, modelin her adımda yeni gelen veriyi öğrenip bir sonraki adımı tahmin ettiği canlı (production) ortamı simüle eder. Bu, modelin zaman içinde değişen trendlere karşı dayanıklılığını ölçmenin en gerçekçi yoludur.
+
+---
+
+### 4. Tahminlemede "Pozitif Bias" neyi gösterir?
+**Soru:** What does a positive bias in forecasting indicate?
+* A - the model systematically under-predicts demand
+* B - the model is unbiased and accurate
+* C - the model performs better on larger datasets
+* **D - the model systematically over-predicts demand** ✅
+
+> **💡 Teknik Açıklama:**
+> Bias formülü kaynağa göre değişebilir ancak bu cevap anahtarına göre Bias şu şekilde tanımlanmıştır: `Bias = Tahmin (Forecast) - Gerçek (Actual)`.
+> Eğer sonuç **Pozitif (+)** ise, Tahmin > Gerçek demektir. Bu da modelin talebi olduğundan fazla tahmin ettiğini (**Over-prediction**) gösterir.
+
+---
+
+### 5. MAD ve RMSE arasındaki temel fark nedir?
+**Soru:** What is the primary difference between MAD and RMSE?
+* A - MAD penalizes larger errors more than RMSE
+* **B - RMSE penalizes larger errors more than MAD** ✅
+* C - MAD measures relative errors, while RMSE measures absolute errors
+* D - MAD focuses on predicting average values, while RMSE focuses on predicting medians
+
+> **💡 Teknik Açıklama:**
+> * **MAD (Mean Absolute Deviation):** Hataların mutlak değerini alır ($|e|$). Doğrusal bir ceza uygular.
+> * **RMSE (Root Mean Squared Error):** Hataların karesini alır ($e^2$). Karesi alınan büyük hatalar sonucu orantısız şekilde büyütür. Bu nedenle RMSE, büyük hataları (outlier) çok daha ağır cezalandırır.
+
+---
+
+### 6. Hangi metrik, Ortalama Mutlak Sapmayı (MAD) gerçek değerlerin ortalamasına bölerek normalleştirir?
+**Soru:** Which metric normalizes the Mean Absolute Deviation (MAD) by the mean of the actual values?
+* A - MAPE
+* B - RMSE
+* **C - rMAD** ✅
+* D - Bias
+
+> **💡 Teknik Açıklama:**
+> **rMAD (Relative MAD)**, hatanın büyüklüğünü verinin ortalamasına göre oranlar. Formülü: $rMAD = \frac{MAD}{Mean}$. Bu, MAPE'ye bir alternatiftir ancak MAPE kadar yaygın kullanılmaz.
+
+---
+
+### 7. Neden MAPE zaman serisi tahminlemesi için her zaman güvenilir bir metrik değildir?
+**Soru:** Why is MAPE not always a reliable metric for time-series forecasting?
+* A - it is difficult to interpret
+* B - it penalizes large errors less than RMSE
+* **C - it is sensitive to small actual values and asymmetry in error treatment** ✅
+* D - it cannot be used with rolling window splits
+
+> **💡 Teknik Açıklama:**
+> **MAPE (Mean Absolute Percentage Error)** formülünde paydada "Gerçek Değer" ($y_t$) bulunur.
+> 1.  Eğer $y_t = 0$ ise sonuç tanımsızdır (sonsuz).
+> 2.  Eğer $y_t$ çok küçükse, hata oranı yapay olarak devasa çıkar (Örn: Gerçek 1, Tahmin 2 ise hata %100'dür).
+
+---
+
+### 8. Bir tahminleme görevinde, bir model en iyi RMSE'ye ama en kötü MAPE'ye sahiptir. Bu ne anlama gelir?
+**Soru:** In a forecasting task, a model has the best RMSE but the worst MAPE. What does this imply?
+* A - the model is inaccurate overall
+* **B - the model handles small actual values poorly but minimizes large errors effectively** ✅
+* C - the model predicts median values better than averages
+* D - the model overfits the training data
+
+> **💡 Teknik Açıklama:**
+> * **İyi RMSE:** Model büyük hatalar (outlier) yapmıyor demektir.
+> * **Kötü MAPE:** Model, gerçek değerin (hacmin) çok düşük olduğu zamanlarda oransal olarak büyük hatalar yapıyor demektir.
+> * **Örnek:** Model 10.000 adetlik satışta 100 hata yaparsa (Küçük % hata), ama 5 adetlik satışta 4 hata yaparsa (Büyük % hata - %80), MAPE bozulur ama RMSE çok etkilenmez.
+
+---
+
+### 9. Büyük hataların özellikle maliyetli olduğu durumlarda hangi metrik en uygundur?
+**Soru:** Which metric is most appropriate when large errors are especially costly?
+* A - Bias
+* B - MAD
+* C - MAPE
+* **D - RMSE** ✅
+
+> **💡 Teknik Açıklama:**
+> Enerji santralleri veya hayati medikal cihazlar gibi "büyük bir hatanın felaket olduğu" durumlarda, o tek büyük hatayı matematiksel olarak parlatıp modele "bunu düzelt" diyen metrik **RMSE**'dir (karesini aldığı için).
+
+---
+
+### 10. Zaman serisi tahminlemesi için hangi değerlendirme metriğine öncelik verileceğine nasıl karar vermelisiniz?
+**Soru:** How should you decide which evaluation metric to prioritize for time-series forecasting?
+* A - choose the metric with the smallest value
+* **B - consider the specific business goals and consequences of forecasting errors** ✅
+* C - prioritize metrics that are easy to calculate
+* D - use MAPE in all cases
+
+> **💡 Teknik Açıklama:**
+> Veri biliminde "tek doğru metrik" yoktur.
+> * Eğer envanter yönetiyorsanız ve ürünler ucuzsa **MAE** yeterlidir.
+> * Eğer finansal bir çöküşü tahmin ediyorsanız **RMSE** kritiktir.
+> * Eğer yönetim kuruluna sunum yapıyorsanız yüzdesel olduğu için **MAPE** tercih edilir.
+> Karar her zaman **iş hedeflerine (Business Goals)** göre verilir.
+
+---
+
+
