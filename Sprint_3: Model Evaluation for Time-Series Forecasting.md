@@ -443,7 +443,7 @@ Zaman serisi modellerini doğrularken (validation) kullanılacak yöntem, veri s
 
 Bu bölüm, iki ana çapraz doğrulama (cross-validation) stratejisinin teknik özelliklerini kıyaslar.
 
-### 🎨 Görsel Anlatım (Visual Concept)
+### 🎨 Visual Concept
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '13px'}}}%%
@@ -468,4 +468,174 @@ gantt
     Train (T3)       :b3, 4, 14
     Test             :crit, 14, 16
 ```
+# 📉 Evaluation Metrics for Retail Demand Forecasting
 
+Perakende sektöründe talep tahmini (Retail Demand Forecasting), envanter yönetimi, fiyatlandırma stratejileri ve tedarik zinciri optimizasyonu için kritik öneme sahiptir. Veriyi doğru bölmek ve modeli eğitmek sadece başlangıçtır; asıl mesele modelin başarısını **doğru metriklerle** ölçmektir.
+
+Farklı metrikler, hatanın farklı yönlerini (büyüklük, yön, ağırlık) yakalar. Aşağıda, perakende talep tahminlemesinde kullanılan en kritik metrikler, teknik detayları ve kullanım senaryoları yer almaktadır.
+
+---
+
+## 1. Bias (Yanlılık / Sapma)
+Bias, tahmin edilen değerler ($\hat{y}$) ile gerçek değerler ($y$) arasındaki sistematik sapmayı ölçer. Hataların ortalamasıdır.
+
+$$Bias = \frac{1}{n} \sum_{i=1}^{n} (\hat{y}_i - y_i)$$
+
+*Burada:*
+* $y$: Gerçek satış/talep değeri
+* $\hat{y}$: Modelin tahmin ettiği değer
+* $n$: Gözlem sayısı
+
+### 🎯 Neden Önemlidir?
+Bias, modelinizin "yönsel" bir hatası olup olmadığını gösterir.
+* **Pozitif Bias (Over-prediction):** Model sürekli gerekenden fazlasını tahmin ediyordur.
+    * *Perakende Riski:* Gereksiz stok maliyeti (Overstocking), imha maliyetleri, nakit akışının stoğa bağlanması.
+* **Negatif Bias (Under-prediction):** Model sürekli gerekenden azını tahmin ediyordur.
+    * *Perakende Riski:* Stok tükenmesi (Stockouts), satış kaybı (Lost Sales), müşteri memnuniyetsizliği.
+
+> **Uzman Notu:** Sadece Bias'a bakarak modelin başarısı ölçülmez. Pozitif ve negatif hatalar birbirini götürebilir (örn: bir gün +100, ertesi gün -100 hata yaparsanız Bias 0 çıkar ama model kötüdür). Bu yüzden Bias, her zaman MAE veya RMSE ile birlikte yorumlanmalıdır.
+
+---
+
+## 2. Mean Absolute Deviation (MAD / MAE)
+Tahmin edilen ve gerçek değerler arasındaki mutlak farkların ortalamasıdır. Hatanın yönüne (pozitif/negatif) bakmaksızın, hatanın **büyüklüğüne** odaklanır.
+
+$$MAD = \frac{1}{n} \sum_{i=1}^{n} |y_i - \hat{y}_i|$$
+
+### 🎯 Neden Önemlidir?
+* **Yorumlanabilirlik:** Veri ile aynı birimdedir. "Günde ortalama 20 adet hata yapıyoruz" demek yöneticiler için anlaşılırdır.
+* **Güvenlik Stoğu (Safety Stock):** Lojistik planlamasında güvenlik stoğu belirlenirken genellikle MAD kullanılır.
+* **İstatistiksel Özellik:** MAD, medyan tahmini optimize eder. Eğer veri setinizde çok fazla aykırı değer (outlier) varsa, MAD, RMSE'ye göre daha dirençli (robust) bir metriktir.
+
+---
+
+## 3. Relative Mean Absolute Deviation (rMAD)
+MAD değerinin, gerçek değerlerin ortalamasına bölünmesiyle elde edilir. Bu işlem MAD'yi normalize eder ve ölçekten bağımsız hale getirir.
+
+$$rMAD = \frac{MAD}{\bar{y}} = \frac{\sum |y_i - \hat{y}_i|}{\sum y_i}$$
+
+### 🎯 Neden Önemlidir?
+* **Karşılaştırılabilirlik:** Farklı satış hacmine sahip ürünleri (çok satan "Fast-mover" vs. az satan "Slow-mover") kıyaslamak için kullanılır.
+* **Örnek:** rMAD %10 ise, hata payınız ortalama talebin %10'u kadardır.
+* **Dikkat:** Düşük hacimli (low-demand) ürünlerde rMAD ve diğer oransal hatalar genellikle yüksek çıkar. Bu istatistiksel bir beklentidir; az satan ürünlerin volatilitesi daha yüksektir.
+
+---
+
+## 4. Mean Absolute Percentage Error (MAPE)
+Tahmin hatasının mutlak yüzdesel ortalamasıdır. Literatürde en yaygın görülen metriklerden biridir ancak perakendede ciddi dezavantajları vardır.
+
+$$MAPE = \frac{100\%}{n} \sum_{i=1}^{n} \left| \frac{y_i - \hat{y}_i}{y_i} \right|$$
+
+### ⚠️ Kritik Dezavantajlar
+1.  **Sıfıra Bölme Hatası (Sensitivity to Small Values):** Gerçek satış ($y_i$) 0 olduğunda (ki perakendede bazı günler satış olmaz), MAPE tanımsızdır (sonsuz). Gerçek değer çok küçükse (örn: 1), hata oranı yapay olarak devasa çıkar.
+2.  **Asimetri (Asymmetry in Error Treatment):** MAPE, gereğinden az tahmin etmeyi (under-forecast), fazla tahmin etmeye (over-forecast) göre daha ağır cezalandırır.
+    * *Örnek:* Gerçek=100, Tahmin=150 (Over) -> Hata %50
+    * *Örnek:* Gerçek=100, Tahmin=50 (Under) -> Hata %50
+    * *Ancak:* Payda değiştiğinde işler karışır. Modelin finansal tahminlerdeki cezalandırma yapısı dengesizleşebilir.
+
+> **Uzman Tavsiyesi:** Perakendede "Intermittent Demand" (Kesikli Talep) sık görüldüğü için MAPE yerine genellikle **WMAPE (Weighted MAPE)** veya **MASE** tercih edilmelidir.
+
+---
+
+## 5. Root Mean Square Error (RMSE)
+Hataların karesinin ortalamasının kareköküdür. MAD'den farklı olarak, hataların karesini aldığı için **büyük hataları** çok daha ağır cezalandırır.
+
+$$RMSE = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2}$$
+
+### 🎯 Neden Önemlidir?
+* **Büyük Hataların Maliyeti:** Eğer işletmeniz için "büyük bir hata yapmak", "birçok küçük hata yapmaktan" çok daha kötüyse (örneğin: tüm stoğun bitmesi veya fabrikanın durması), RMSE kullanmalısınız.
+* **Ortalama Tahmini:** RMSE, istatistiksel olarak ortalamayı (mean) tahmin etmeye çalışır.
+
+---
+
+## 📊 Karşılaştırmalı Özet Tablosu
+
+| Metrik | Odak Noktası | Avantaj | Dezavantaj | En İyi Kullanım Alanı |
+| :--- | :--- | :--- | :--- | :--- |
+| **Bias** | Yön (Alt/Üst Tahmin) | Sistematik hataları (sürekli fazla/eksik tahmin) gösterir. | Tek başına başarıyı ölçemez (Hatalar birbirini götürür). | Stok politikası belirleme (Overstock vs Stockout riski). |
+| **MAD (MAE)** | Hata Büyüklüğü (Lineer) | Yorumlaması kolaydır, outlier'lara karşı dirençlidir. | Büyük hataları RMSE kadar cezalandırmaz. | Genel envanter yönetimi, Güvenlik stoğu hesabı. |
+| **RMSE** | Hata Büyüklüğü (Karesel) | Büyük hataları ağır cezalandırır. | Outlier'lardan çok etkilenir. Yorumlaması MAE kadar doğrudan değildir. | Büyük hataların maliyetinin çok yüksek olduğu durumlar (Finans, Enerji). |
+| **MAPE** | Yüzdesel Hata | Farklı ölçekteki ürünleri kıyaslamayı sağlar. Yöneticiler sever. | 0 satış olduğunda patlar (Tanımsız). Asimetriktir. | Yüksek hacimli ve düzenli satışa sahip ürünler. |
+| **rMAD / WMAPE** | Normalize Hata | Hacim ağırlıklı hatayı gösterir. 0 değerlerinde MAPE gibi patlamaz. | Hesaplanması MAPE'den bir tık daha karmaşıktır. | **Perakende Standardı.** Az ve çok satan ürünlerin olduğu karma portföyler. |
+
+---
+
+### 💡 Sonuç ve Strateji
+Perakende talep tahminlemesinde "tek bir doğru metrik" yoktur. Genellikle hibrit bir yaklaşım izlenir:
+1.  **Model Optimizasyonu için:** **RMSE** veya **MAE** kullanılır (Matematiksel türevlenebilirlik ve ceza mekanizması için).
+2.  **İş Raporlaması (Business Reporting) için:** **WMAPE (veya rMAD)** kullanılır (Yöneticilere "Hata oranımız %15" diyebilmek için).
+3.  **Stok Riski Analizi için:** **Bias** kontrol edilir (Sürekli eksik mi tahmin ediyoruz?).
+
+*Bu döküman, veri bilimi projelerinizde model değerlendirme aşaması için bir rehber niteliğindedir.*
+
+# 📊 Evaluation Metrics for Retail Demand Forecasting II: Holistic Diagnosis
+
+Perakende talep tahminlemesinde (Retail Demand Forecasting) modelleri değerlendirirken tek bir metriğe güvenmek, uçağı sadece "yükseklik göstergesi" ile uçurmaya benzer; hızı veya yönü göremezsiniz. 
+
+Bu döküman, bir XGBoost modelinin performans çıktılarını (MAE, Bias, RMSE, rMAD, MAPE) yan yana koyarak nasıl **detaylı bir model teşhisi** yapılacağını analiz eder.
+
+---
+
+## 1. Metriklerin Toplu Analizi (The Line-up)
+
+Modelin sağlığını ölçmek için aşağıdaki metrikleri bir arada raporluyoruz. Bu yaklaşım, sorunun kaynağını tespit etmemizi sağlar:
+* **Hata Büyüklüğü (Magnitude):** MAE ve RMSE.
+* **Sistematik Sapma (Direction):** Bias.
+* **Göreceli Performans (Relativity):** rMAD ve MAPE.
+
+### 🧪 Vaka Analizi: XGBoost Baseline Sonuçları
+
+Aşağıdaki değerler, standart bir XGBoost modelinin test seti üzerindeki performansını temsil etmektedir. Gelin bu sayıların "Veri Bilimi" ve "Perakende Operasyonu" açısından ne anlama geldiğini inceleyelim.
+
+#### 📉 1. MAE (Mean Absolute Error) ≈ 117 Units
+> **Durum:** Günlük satışların genellikle **300-800 birim** arasında değiştiği bir seride, model ortalama **117 birim** hata yapıyor.
+>
+> **Uzman Yorumu:** Model, ortalama bir günde sipariş toplama sürecinde (order pick-bin) yaklaşık 100-120 birimlik bir sapma yaratıyor. Satış hacmi (800) göz önüne alındığında bu kabul edilebilir bir başlangıçtır, ancak mükemmel değildir.
+
+#### ⚖️ 2. Bias ≈ -18 Units
+> **Durum:** Sonuç negatiftir.
+>
+> **Uzman Yorumu (Under-prediction Risk):** Model, sistematik olarak gerçeğin altında tahmin yapıyor (**Negative Bias**). 
+> * **İş Riski:** Perakendede bu durum, **"Stok Yok" (Stockout)** riskine ve potansiyel ciro kaybına (Lost Sales) işaret eder. Model talebi yakalayamıyor, gerisinde kalıyor.
+> * **Teknik Aksiyon:** Kayıp fonksiyonuna (Loss Function) asimetrik bir ceza ekleyerek veya "Safety Stock" (Güvenlik Stoğu) çarpanını artırarak bu bias düzeltilmelidir.
+
+#### ⚡ 3. RMSE (Root Mean Square Error) ≈ 171 Units
+> **Durum:** $RMSE (171) > MAE (117)$. Aradaki fark belirgindir.
+>
+> **Uzman Yorumu (Variance & Outliers):** RMSE'nin MAE'den bu kadar yüksek olması, modelin **büyük hatalar** (large spikes) yaptığını gösterir.
+> * Model, "sıradan günleri" iyi tahmin ediyor olabilir, ancak promosyon veya özel günlerdeki (tallest peaks) ani talep artışlarını yakalayamıyor ve karesel ceza (squared error) nedeniyle RMSE yükseliyor.
+
+#### 📊 4. MAD & rMAD (Relative MAD) ≈ 0.83 (%83)
+> **Durum:** $MAD \approx 140$ ve $rMAD \approx 0.83$.
+>
+> **Uzman Yorumu (Variability Check):** Burada rMAD, modelin hatasının, serinin kendi doğal değişkenliğine (variability) oranı olarak yorumlanmıştır. 
+> * Hata, verinin kendi dalgalanmasının %83'ü kadar. Bu, modelin serideki varyansın (bilginin) bir kısmını açıkladığını ancak hala önemli bir kısmını "gürültü" veya "açıklanamayan varyans" olarak bıraktığını gösterir. Model doğal yayılımı (spread) tam olarak kavrayamamış.
+
+#### 🏷️ 5. MAPE (Mean Absolute Percentage Error) ≈ 28%
+> **Durum:** Ortalama mutlak yüzdesel hata %28.
+>
+> **Uzman Yorumu:** Model, gerçek talebi ortalama olarak dörtte bir veya üçte bir oranında ıskalıyor.
+> * **Perakende Bağlamı:** Hızlı tüketim (FMCG) için %28 iyileştirilmesi gereken bir orandır. Ancak moda veya lüks tüketim gibi yüksek volatiliteli alanlarda "işletilebilir" (serviceable) bir oran kabul edilebilir.
+
+---
+
+## 2. Karşılaştırmalı Teşhis Tablosu (Diagnostic Matrix)
+
+Hangi metriğin neyi işaret ettiğini ve bu XGBoost örneğindeki karşılığını özetleyen teknik tablo:
+
+| Metrik | Ne Ölçüyor? | XGBoost Sonucu | Teşhis & İş Anlamı |
+| :--- | :--- | :--- | :--- |
+| **MAE** | Ortalama Hata (Lineer) | **117 birim** | "Günde ortalama 117 ürün yanılıyoruz." |
+| **Bias** | Hatanın Yönü | **-18 birim** | **Tehlike:** Talebi azımsıyoruz. Müşteri ürünü bulamayabilir (Under-forecasting). |
+| **RMSE** | Büyük Hatalar (Karesel) | **171 birim** | MAE ile fark büyük. Kampanya dönemleri veya ani piklerde model çuvallıyor. |
+| **rMAD** | Değişkenliğe Göre Hata | **0.83** | Model verinin karmaşıklığını tam çözemedi, varyansın büyük kısmı hala hatada. |
+| **MAPE** | Yüzdesel Hata | **%28** | Yönetim raporu için makul, ancak tedarik zinciri optimizasyonu için %20 altına inilmeli. |
+
+---
+
+## 3. Uzman Sonuç Bildirgesi (Executive Summary)
+
+Bu XGBoost modeli **"Tutucu" (Conservative)** bir modeldir:
+1.  **Negatif Bias:** Risk almaktan kaçınıyor ve talebi olduğundan az tahmin ediyor.
+2.  **Yüksek RMSE:** Beklenmedik talep patlamalarını (Outliers) tahmin etmekte zorlanıyor.
+3.  **Sonuç:** Model şu haliyle "Otomatik Sipariş" sistemine bağlanırsa **stoksuz kalma (stock-out)** sorunları yaşanır. Modelin hiperparametreleri, ani yükselişleri (spikes) daha iyi yakalayacak şekilde optimize edilmelidir.
