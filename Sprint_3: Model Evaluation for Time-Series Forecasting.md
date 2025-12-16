@@ -1449,6 +1449,7 @@ graph TD
     style Result3 fill:#e3f2fd,stroke:#42a5f5
 
 
+```
 
 ### 📋 Detaylı Strateji Tablosu
 
