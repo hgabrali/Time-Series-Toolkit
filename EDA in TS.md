@@ -8,7 +8,7 @@
 
 **"Decomposition"** (Ayrıştırma), karmaşık bir sinyali, onu oluşturan temel bileşenlere ayırma işlemidir. Bir zaman serisi ($Y_t$) genellikle şu formülle ifade edilir:
 
-$$Y_t = Trend_t + Seasonality_t + Residual_t$$
+$$Y_t = Trend_t + Seasonality_t + Residual_t$$ 
 
 Aşağıdaki tablo, bu bileşenlerin teknik analizini, çözüm yöntemlerini ve kullanılan araçları detaylandırmaktadır.
 
